@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Element UI 表格测试 - 表格提取插件</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 40px;
+    }
+    .section {
+      background: white;
+      padding: 30px;
+      margin-bottom: 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .section h2 {
+      color: #667eea;
+      margin-top: 0;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .info {
+      background: #e0e7ff;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Element UI 表格测试页面</h1>
+
+  <div class="info">
+    <strong>💡 使用提示：</strong><br>
+    1. 将鼠标移动到 Element UI 表格上，右上角会出现「📊 提取表格」按钮<br>
+    2. 点击按钮打开提取面板<br>
+    3. 选择导出格式：JSON、CSV 或 SQL<br>
+    4. 使用「复制结果」或「下载文件」功能
+  </div>
+
+  <div class="section">
+    <h2>示例 1：Element UI 表格（模拟）</h2>
+    <p>这是一个模拟的 Element UI 表格结构</p>
+    
+    <!-- 模拟 Element UI 表格结构 -->
+    <div class="el-table custom-table el-table--fit el-table--enable-row-hover" style="position: relative;">
+      <div class="el-table__header-wrapper">
+        <table cellspacing="0" cellpadding="0" border="0" class="el-table__header" style="width: 100%;">
+          <colgroup>
+            <col name="el-table_1_column_1" width="200">
+            <col name="el-table_1_column_2" width="200">
+            <col name="el-table_1_column_3" width="200">
+            <col name="el-table_1_column_4" width="200">
+          </colgroup>
+          <thead>
+            <tr>
+              <th colspan="1" rowspan="1" class="el-table_1_column_1 is-leaf">
+                <div class="cell">ID</div>
+              </th>
+              <th colspan="1" rowspan="1" class="el-table_1_column_2 is-leaf">
+                <div class="cell">姓名</div>
+              </th>
+              <th colspan="1" rowspan="1" class="el-table_1_column_3 is-leaf">
+                <div class="cell">职位</div>
+              </th>
+              <th colspan="1" rowspan="1" class="el-table_1_column_4 is-leaf">
+                <div class="cell">部门</div>
+              </th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      <div class="el-table__body-wrapper" style="max-height: none;">
+        <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 100%;">
+          <colgroup>
+            <col name="el-table_1_column_1" width="200">
+            <col name="el-table_1_column_2" width="200">
+            <col name="el-table_1_column_3" width="200">
+            <col name="el-table_1_column_4" width="200">
+          </colgroup>
+          <tbody>
+            <tr class="el-table__row">
+              <td class="el-table_1_column_1">
+                <div class="cell"><span>1001</span></div>
+              </td>
+              <td class="el-table_1_column_2">
+                <div class="cell"><span>张三</span></div>
+              </td>
+              <td class="el-table_1_column_3">
+                <div class="cell"><span>前端开发</span></div>
+              </td>
+              <td class="el-table_1_column_4">
+                <div class="cell"><span>技术部</span></div>
+              </td>
+            </tr>
+            <tr class="el-table__row">
+              <td class="el-table_1_column_1">
+                <div class="cell"><span>1002</span></div>
+              </td>
+              <td class="el-table_1_column_2">
+                <div class="cell"><span>李四</span></div>
+              </td>
+              <td class="el-table_1_column_3">
+                <div class="cell"><span>后端开发</span></div>
+              </td>
+              <td class="el-table_1_column_4">
+                <div class="cell"><span>技术部</span></div>
+              </td>
+            </tr>
+            <tr class="el-table__row">
+              <td class="el-table_1_column_1">
+                <div class="cell"><span>1003</span></div>
+              </td>
+              <td class="el-table_1_column_2">
+                <div class="cell"><span>王五</span></div>
+              </td>
+              <td class="el-table_1_column_3">
+                <div class="cell"><span>UI设计师</span></div>
+              </td>
+              <td class="el-table_1_column_4">
+                <div class="cell"><span>设计部</span></div>
+              </td>
+            </tr>
+            <tr class="el-table__row">
+              <td class="el-table_1_column_1">
+                <div class="cell"><span>1004</span></div>
+              </td>
+              <td class="el-table_1_column_2">
+                <div class="cell"><span>赵六</span></div>
+              </td>
+              <td class="el-table_1_column_3">
+                <div class="cell"><span>产品经理</span></div>
+              </td>
+              <td class="el-table_1_column_4">
+                <div class="cell"><span>产品部</span></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>示例 2：简化的 Element UI 表格</h2>
+    
+    <div class="el-table" style="position: relative;">
+      <div class="el-table__header-wrapper">
+        <table cellspacing="0" cellpadding="0" border="0" class="el-table__header" style="width: 100%;">
+          <thead>
+            <tr>
+              <th class="is-leaf">
+                <div class="cell">订单号</div>
+              </th>
+              <th class="is-leaf">
+                <div class="cell">客户名称</div>
+              </th>
+              <th class="is-leaf">
+                <div class="cell">金额</div>
+              </th>
+              <th class="is-leaf">
+                <div class="cell">状态</div>
+              </th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      <div class="el-table__body-wrapper">
+        <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 100%;">
+          <tbody>
+            <tr class="el-table__row">
+              <td><div class="cell"><span>ORD2024001</span></div></td>
+              <td><div class="cell"><span>阿里巴巴</span></div></td>
+              <td><div class="cell"><span>¥50,000</span></div></td>
+              <td><div class="cell"><span>已完成</span></div></td>
+            </tr>
+            <tr class="el-table__row">
+              <td><div class="cell"><span>ORD2024002</span></div></td>
+              <td><div class="cell"><span>腾讯科技</span></div></td>
+              <td><div class="cell"><span>¥80,000</span></div></td>
+              <td><div class="cell"><span>进行中</span></div></td>
+            </tr>
+            <tr class="el-table__row">
+              <td><div class="cell"><span>ORD2024003</span></div></td>
+              <td><div class="cell"><span>字节跳动</span></div></td>
+              <td><div class="cell"><span>¥120,000</span></div></td>
+              <td><div class="cell"><span>已完成</span></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>示例 3：混合表格（标准 HTML 表格）</h2>
+    <p>用于对比，这是一个标准的 HTML 表格</p>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background: #667eea; color: white;">
+          <th style="border: 1px solid #ddd; padding: 12px;">项目名称</th>
+          <th style="border: 1px solid #ddd; padding: 12px;">负责人</th>
+          <th style="border: 1px solid #ddd; padding: 12px;">进度</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 12px;">网站改版</td>
+          <td style="border: 1px solid #ddd; padding: 12px;">张三</td>
+          <td style="border: 1px solid #ddd; padding: 12px;">80%</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 12px;">APP 开发</td>
+          <td style="border: 1px solid #ddd; padding: 12px;">李四</td>
+          <td style="border: 1px solid #ddd; padding: 12px;">60%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <style>
+    /* Element UI 样式模拟 */
+    .el-table {
+      position: relative;
+      overflow: hidden;
+      box-sizing: border-box;
+      flex: 1;
+      width: 100%;
+      max-width: 100%;
+      background-color: #fff;
+      font-size: 14px;
+      color: #606266;
+      border: 1px solid #ebeef5;
+      border-radius: 4px;
+    }
+    
+    .el-table__header-wrapper {
+      overflow: hidden;
+    }
+    
+    .el-table__header {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    
+    .el-table__header th {
+      background-color: #f5f7fa;
+      color: #909399;
+      font-weight: 500;
+      text-align: left;
+      border-bottom: 1px solid #ebeef5;
+      padding: 12px 0;
+    }
+    
+    .el-table__header th .cell {
+      padding: 0 10px;
+    }
+    
+    .el-table__body-wrapper {
+      overflow: auto;
+    }
+    
+    .el-table__body {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    
+    .el-table__row {
+      transition: background-color 0.25s ease;
+    }
+    
+    .el-table__row:hover {
+      background-color: #f5f7fa;
+    }
+    
+    .el-table__body td {
+      border-bottom: 1px solid #ebeef5;
+      padding: 12px 0;
+    }
+    
+    .el-table__body td .cell {
+      padding: 0 10px;
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,436 @@
+/* 网页表格识别与导出器 - 样式文件 */
+
+/* 悬浮按钮容器 */
+.table-extractor-button-container {
+  position: absolute;
+  z-index: 999999;
+  pointer-events: auto;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* 悬浮按钮 */
+.table-extractor-button {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.table-extractor-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.table-extractor-button:active {
+  transform: translateY(0);
+}
+
+/* 关闭按钮 */
+.table-extractor-close-button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.table-extractor-close-button:hover {
+  background: rgba(220, 38, 38, 1);
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+}
+
+.table-extractor-close-button:active {
+  transform: scale(0.95) rotate(90deg);
+}
+
+/* 提取面板 */
+.table-extractor-panel {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 600px !important;
+  max-width: 90vw !important;
+  max-height: 80vh !important;
+  background: white !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  z-index: 2147483647 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  display: flex !important;
+  flex-direction: column !important;
+  animation: panelFadeIn 0.3s ease;
+  overflow: hidden !important;
+}
+
+@keyframes panelFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* 面板头部 */
+.panel-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 20px 24px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border-radius: 16px 16px 0 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+/* 标签栏 */
+.panel-tabs {
+  display: flex !important;
+  gap: 8px !important;
+  padding: 16px 24px !important;
+  background: #f9fafb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  flex-shrink: 0 !important;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6b7280;
+}
+
+.tab-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+  transform: translateY(-1px);
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* SQL 配置区 */
+.panel-config {
+  padding: 12px 24px !important;
+  background: #fffbeb !important;
+  border-bottom: 1px solid #fbbf24 !important;
+  flex-shrink: 0 !important;
+}
+
+.config-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.config-item label {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #92400e !important;
+  white-space: nowrap !important;
+}
+
+.config-item input[type="text"] {
+  flex: 1 !important;
+  padding: 8px 12px !important;
+  border: 2px solid #fbbf24 !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  background: white !important;
+  color: #78350f !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+}
+
+.config-item input[type="text"]:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1) !important;
+}
+
+.config-item input[type="text"]::placeholder {
+  color: #d97706 !important;
+  opacity: 0.5 !important;
+}
+
+.refresh-btn {
+  padding: 8px 12px !important;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.refresh-btn:hover {
+  transform: scale(1.1) rotate(90deg) !important;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4) !important;
+}
+
+.refresh-btn:active {
+  transform: scale(0.95) rotate(90deg) !important;
+}
+
+/* 面板内容区 */
+.panel-content {
+  padding: 20px 24px !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+
+/* 输出区域 */
+.output-area {
+  flex: 1 !important;
+  background: #1e293b !important;
+  border-radius: 8px !important;
+  padding: 16px !important;
+  overflow: auto !important;
+  min-height: 200px !important;
+  max-height: 400px !important;
+}
+
+.output-area pre {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 滚动条样式 */
+.output-area::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.output-area::-webkit-scrollbar-track {
+  background: #0f172a;
+  border-radius: 4px;
+}
+
+.output-area::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.output-area::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* 操作按钮区 */
+.panel-actions {
+  display: flex !important;
+  gap: 12px !important;
+  flex-shrink: 0 !important;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.copy-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+/* 提示消息 */
+.table-extractor-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 99999999;
+  opacity: 0;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.table-extractor-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 提示消息 */
+.table-extractor-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 2147483647;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  pointer-events: none;
+}
+
+.table-extractor-message-success {
+  background: rgba(34, 197, 94, 0.95);
+  color: white;
+}
+
+.table-extractor-message-info {
+  background: rgba(59, 130, 246, 0.95);
+  color: white;
+}
+
+.table-extractor-message-warning {
+  background: rgba(251, 191, 36, 0.95);
+  color: #78350f;
+}
+
+.table-extractor-message-error {
+  background: rgba(239, 68, 68, 0.95);
+  color: white;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .table-extractor-panel {
+    width: 95vw;
+    max-height: 90vh;
+  }
+  
+  .panel-tabs {
+    flex-direction: column;
+  }
+  
+  .tab-btn {
+    width: 100%;
+  }
+  
+  .panel-actions {
+    flex-direction: column;
+  }
+}
+
+/* 防止与页面样式冲突 - 使用更安全的方式 */
+.table-extractor-panel * {
+  box-sizing: border-box !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* 确保按钮容器和提示消息在最顶层 */
+.table-extractor-button-container {
+  z-index: 2147483646 !important;
+}
+
+.table-extractor-toast {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+}

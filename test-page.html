@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>表格提取插件 - 测试页面</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 40px;
+    }
+    .section {
+      background: white;
+      padding: 30px;
+      margin-bottom: 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .section h2 {
+      color: #667eea;
+      margin-top: 0;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    tr:hover {
+      background: #f3f4f6;
+    }
+    .info {
+      background: #e0e7ff;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .dynamic-btn {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .dynamic-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+    #dynamicTableContainer {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 表格提取插件测试页面</h1>
+
+  <div class="info">
+    <strong>💡 使用提示：</strong><br>
+    1. 将鼠标移动到下方任意表格上，右上角会出现「📊 提取表格」按钮<br>
+    2. 点击按钮打开提取面板<br>
+    3. 选择导出格式：JSON、CSV 或 SQL<br>
+    4. 使用「复制结果」或「下载文件」功能
+  </div>
+
+  <div class="section">
+    <h2>示例 1：员工信息表</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>姓名</th>
+          <th>职位</th>
+          <th>部门</th>
+          <th>入职日期</th>
+          <th>薪资</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>张三</td>
+          <td>前端工程师</td>
+          <td>技术部</td>
+          <td>2023-01-15</td>
+          <td>15000</td>
+        </tr>
+        <tr>
+          <td>李四</td>
+          <td>后端工程师</td>
+          <td>技术部</td>
+          <td>2022-08-20</td>
+          <td>18000</td>
+        </tr>
+        <tr>
+          <td>王五</td>
+          <td>UI设计师</td>
+          <td>设计部</td>
+          <td>2023-03-10</td>
+          <td>12000</td>
+        </tr>
+        <tr>
+          <td>赵六</td>
+          <td>产品经理</td>
+          <td>产品部</td>
+          <td>2021-11-05</td>
+          <td>20000</td>
+        </tr>
+        <tr>
+          <td>钱七</td>
+          <td>测试工程师</td>
+          <td>技术部</td>
+          <td>2023-05-01</td>
+          <td>13000</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>示例 2：销售数据表</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>月份</th>
+          <th>产品A</th>
+          <th>产品B</th>
+          <th>产品C</th>
+          <th>总计</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1月</td>
+          <td>12000</td>
+          <td>15000</td>
+          <td>8000</td>
+          <td>35000</td>
+        </tr>
+        <tr>
+          <td>2月</td>
+          <td>15000</td>
+          <td>18000</td>
+          <td>9000</td>
+          <td>42000</td>
+        </tr>
+        <tr>
+          <td>3月</td>
+          <td>18000</td>
+          <td>20000</td>
+          <td>12000</td>
+          <td>50000</td>
+        </tr>
+        <tr>
+          <td>4月</td>
+          <td>16000</td>
+          <td>17000</td>
+          <td>11000</td>
+          <td>44000</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>示例 3：课程成绩表</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>学号</th>
+          <th>姓名</th>
+          <th>语文</th>
+          <th>数学</th>
+          <th>英语</th>
+          <th>总分</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>2023001</td>
+          <td>小明</td>
+          <td>85</td>
+          <td>92</td>
+          <td>88</td>
+          <td>265</td>
+        </tr>
+        <tr>
+          <td>2023002</td>
+          <td>小红</td>
+          <td>90</td>
+          <td>88</td>
+          <td>95</td>
+          <td>273</td>
+        </tr>
+        <tr>
+          <td>2023003</td>
+          <td>小刚</td>
+          <td>78</td>
+          <td>85</td>
+          <td>80</td>
+          <td>243</td>
+        </tr>
+        <tr>
+          <td>2023004</td>
+          <td>小丽</td>
+          <td>92</td>
+          <td>90</td>
+          <td>88</td>
+          <td>270</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>示例 4：无表头的简单表格</h2>
+    <table>
+      <tbody>
+        <tr>
+          <td>苹果</td>
+          <td>5.00</td>
+          <td>100</td>
+        </tr>
+        <tr>
+          <td>香蕉</td>
+          <td>3.50</td>
+          <td>150</td>
+        </tr>
+        <tr>
+          <td>橙子</td>
+          <td>4.00</td>
+          <td>120</td>
+        </tr>
+        <tr>
+          <td>西瓜</td>
+          <td>8.00</td>
+          <td>50</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>示例 5：动态加载表格测试</h2>
+    <p>点击下方按钮，动态生成一个新表格，测试插件的动态检测功能：</p>
+    <button class="dynamic-btn" onclick="addDynamicTable()">🔄 动态生成表格</button>
+    <div id="dynamicTableContainer"></div>
+  </div>
+
+  <script>
+    function addDynamicTable() {
+      const container = document.getElementById('dynamicTableContainer');
+      const tableHTML = `
+        <table style="margin-top: 20px;">
+          <thead>
+            <tr>
+              <th>动态ID</th>
+              <th>生成时间</th>
+              <th>随机数</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${Date.now()}</td>
+              <td>${new Date().toLocaleString('zh-CN')}</td>
+              <td>${Math.floor(Math.random() * 1000)}</td>
+            </tr>
+            <tr>
+              <td>${Date.now() + 1}</td>
+              <td>${new Date().toLocaleString('zh-CN')}</td>
+              <td>${Math.floor(Math.random() * 1000)}</td>
+            </tr>
+            <tr>
+              <td>${Date.now() + 2}</td>
+              <td>${new Date().toLocaleString('zh-CN')}</td>
+              <td>${Math.floor(Math.random() * 1000)}</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+      container.innerHTML = tableHTML;
+    }
+  </script>
+</body>
+</html>

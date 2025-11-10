@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "网页表格识别与导出器",
+  "version": "1.2.1",
+  "description": "自动识别网页表格（支持 Element UI、Ant Design），导出为 JSON、CSV、SQL 格式",
+  "author": "099edan",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    },
+    "default_title": "表格提取工具"
+  }
+}

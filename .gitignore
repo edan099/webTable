@@ -1,0 +1,30 @@
+# Chrome Extension
+*.pem
+*.crx
+
+# Icons (if generated)
+icon16.png
+icon48.png
+icon128.png
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Node modules (if using build tools)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+build/
