@@ -2,6 +2,38 @@
 // 全局变量
 let currentTable = null;
 let extractPanel = null;
+let settingsPanel = null;
+let isDisabledSite = false;
+
+// 检查当前网站是否被禁用
+async function checkDisabledStatus() {
+  try {
+    const result = await chrome.storage.sync.get(['disabledSites']);
+    const disabledSites = result.disabledSites || [];
+    const currentHost = window.location.hostname;
+    isDisabledSite = disabledSites.includes(currentHost);
+    return isDisabledSite;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 监听来自 popup 的消息
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'updateDisabledStatus') {
+    isDisabledSite = message.disabled;
+    // 隐藏或显示所有悬浮按钮
+    const buttons = document.querySelectorAll('.table-extractor-button-container');
+    buttons.forEach(btn => {
+      btn.style.display = isDisabledSite ? 'none' : '';
+    });
+    // 如果禁用，关闭提取面板
+    if (isDisabledSite && extractPanel) {
+      extractPanel.remove();
+      extractPanel = null;
+    }
+  }
+});
 
 // 显示提示消息
 function showMessage(message, type = 'success') {
@@ -20,7 +52,14 @@ function showMessage(message, type = 'success') {
 }
 
 // 初始化插件
-function init() {
+async function init() {
+  // 检查当前网站是否被禁用
+  const disabled = await checkDisabledStatus();
+  if (disabled) {
+    console.log('[表格提取工具] 当前网站已禁用');
+    return;
+  }
+  
   // 扫描页面中的所有表格
   scanTables();
   
@@ -78,6 +117,9 @@ function isNestedInComponentTable(table) {
 
 // 为表格添加悬浮按钮
 function addFloatingButton(table) {
+  // 如果网站被禁用，不添加按钮
+  if (isDisabledSite) return;
+  
   // 创建悬浮按钮容器
   const buttonContainer = document.createElement('div');
   buttonContainer.className = 'table-extractor-button-container';
@@ -88,6 +130,20 @@ function addFloatingButton(table) {
   button.innerHTML = '📊 提取表格';
   button.style.display = 'none';
   
+  // 创建设置按钮
+  const settingsButton = document.createElement('button');
+  settingsButton.className = 'table-extractor-settings-button';
+  settingsButton.innerHTML = '⚙️';
+  settingsButton.title = '设置';
+  settingsButton.style.display = 'none';
+  
+  // 创建禁用按钮
+  const disableButton = document.createElement('button');
+  disableButton.className = 'table-extractor-disable-button';
+  disableButton.innerHTML = '🚫';
+  disableButton.title = '禁用此网站';
+  disableButton.style.display = 'none';
+  
   // 创建关闭按钮
   const closeButton = document.createElement('button');
   closeButton.className = 'table-extractor-close-button';
@@ -96,6 +152,8 @@ function addFloatingButton(table) {
   closeButton.style.display = 'none';
   
   buttonContainer.appendChild(button);
+  buttonContainer.appendChild(settingsButton);
+  buttonContainer.appendChild(disableButton);
   buttonContainer.appendChild(closeButton);
   document.body.appendChild(buttonContainer);
   
@@ -104,12 +162,14 @@ function addFloatingButton(table) {
   
   // 鼠标悬停事件
   table.addEventListener('mouseenter', (e) => {
-    if (isHidden) return; // 如果已隐藏，不再显示
+    if (isHidden || isDisabledSite) return; // 如果已隐藏或网站被禁用，不再显示
     
     const rect = table.getBoundingClientRect();
     buttonContainer.style.top = `${rect.top + window.scrollY}px`;
-    buttonContainer.style.left = `${rect.right + window.scrollX - 110}px`;
+    buttonContainer.style.left = `${rect.right + window.scrollX - 175}px`;
     button.style.display = 'block';
+    settingsButton.style.display = 'block';
+    disableButton.style.display = 'block';
     closeButton.style.display = 'block';
     currentTable = table;
   });
@@ -119,6 +179,8 @@ function addFloatingButton(table) {
     setTimeout(() => {
       if (!buttonContainer.matches(':hover')) {
         button.style.display = 'none';
+        settingsButton.style.display = 'none';
+        disableButton.style.display = 'none';
         closeButton.style.display = 'none';
       }
     }, 100);
@@ -126,6 +188,8 @@ function addFloatingButton(table) {
   
   buttonContainer.addEventListener('mouseleave', () => {
     button.style.display = 'none';
+    settingsButton.style.display = 'none';
+    disableButton.style.display = 'none';
     closeButton.style.display = 'none';
   });
   
@@ -134,7 +198,55 @@ function addFloatingButton(table) {
     e.stopPropagation();
     showExtractPanel(table);
     button.style.display = 'none';
+    settingsButton.style.display = 'none';
+    disableButton.style.display = 'none';
     closeButton.style.display = 'none';
+  });
+  
+  // 点击设置按钮显示设置面板
+  settingsButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showSettingsPanel();
+    button.style.display = 'none';
+    settingsButton.style.display = 'none';
+    disableButton.style.display = 'none';
+    closeButton.style.display = 'none';
+  });
+  
+  // 点击禁用按钮禁用当前网站
+  disableButton.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const currentHost = window.location.hostname;
+    
+    try {
+      // 获取当前禁用列表
+      const result = await chrome.storage.sync.get(['disabledSites']);
+      const disabledSites = result.disabledSites || [];
+      
+      // 添加当前网站
+      if (!disabledSites.includes(currentHost)) {
+        disabledSites.push(currentHost);
+        await chrome.storage.sync.set({ disabledSites });
+      }
+      
+      // 更新状态
+      isDisabledSite = true;
+      
+      // 隐藏所有按钮
+      const allButtons = document.querySelectorAll('.table-extractor-button-container');
+      allButtons.forEach(btn => btn.style.display = 'none');
+      
+      // 关闭提取面板和设置面板
+      if (extractPanel) {
+        extractPanel.remove();
+        extractPanel = null;
+      }
+      closeSettingsPanel();
+      
+      showMessage(`已禁用 ${currentHost}，点击扩展图标可解除`, 'info');
+    } catch (err) {
+      showMessage('禁用失败，请重试', 'error');
+    }
   });
   
   // 点击关闭按钮隐藏悬浮按钮
@@ -142,6 +254,8 @@ function addFloatingButton(table) {
     e.stopPropagation();
     isHidden = true;
     button.style.display = 'none';
+    settingsButton.style.display = 'none';
+    disableButton.style.display = 'none';
     closeButton.style.display = 'none';
     // 显示提示消息
     showMessage('已隐藏此表格的提取按钮，刷新页面可恢复', 'info');
@@ -594,6 +708,169 @@ function showToast(message) {
       toast.remove();
     }, 300);
   }, 2000);
+}
+
+// 显示设置面板
+async function showSettingsPanel() {
+  // 如果面板已存在，先移除
+  closeSettingsPanel();
+  
+  const currentHost = window.location.hostname;
+  
+  // 获取禁用列表
+  let disabledSites = [];
+  try {
+    const result = await chrome.storage.sync.get(['disabledSites']);
+    disabledSites = result.disabledSites || [];
+  } catch (e) {}
+  
+  const isCurrentDisabled = disabledSites.includes(currentHost);
+  
+  // 创建面板
+  settingsPanel = document.createElement('div');
+  settingsPanel.className = 'table-extractor-settings-panel';
+  settingsPanel.innerHTML = `
+    <div class="settings-panel-header">
+      <h3>⚙️ 设置</h3>
+      <button class="settings-close-btn" title="关闭">✕</button>
+    </div>
+    <div class="settings-panel-content">
+      <div class="settings-section">
+        <div class="settings-current-site">
+          <span class="settings-label">当前网站</span>
+          <span class="settings-host">${currentHost}</span>
+          <span class="settings-status ${isCurrentDisabled ? 'disabled' : 'enabled'}">${isCurrentDisabled ? '已禁用' : '已启用'}</span>
+        </div>
+        <button class="settings-toggle-btn ${isCurrentDisabled ? 'enable' : 'disable'}" data-host="${currentHost}">
+          ${isCurrentDisabled ? '✅ 启用此网站' : '🚫 禁用此网站'}
+        </button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">📋 已禁用的网站 (${disabledSites.length})</div>
+        <div class="settings-disabled-list">
+          ${disabledSites.length === 0 ? '<div class="settings-empty">暂无禁用的网站</div>' : 
+            disabledSites.map(host => `
+              <div class="settings-disabled-item">
+                <span class="settings-disabled-host">${host}</span>
+                <button class="settings-remove-btn" data-host="${host}" title="解除禁用">✕</button>
+              </div>
+            `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(settingsPanel);
+  
+  // 绑定事件
+  bindSettingsPanelEvents();
+}
+
+// 绑定设置面板事件
+function bindSettingsPanelEvents() {
+  if (!settingsPanel) return;
+  
+  // 关闭按钮
+  settingsPanel.querySelector('.settings-close-btn').addEventListener('click', closeSettingsPanel);
+  
+  // 切换当前网站状态
+  settingsPanel.querySelector('.settings-toggle-btn').addEventListener('click', async (e) => {
+    const host = e.target.dataset.host;
+    await toggleSiteDisabled(host);
+    // 刷新面板
+    showSettingsPanel();
+  });
+  
+  // 解除禁用按钮
+  settingsPanel.querySelectorAll('.settings-remove-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const host = e.target.dataset.host;
+      await removeSiteFromDisabled(host);
+      // 刷新面板
+      showSettingsPanel();
+    });
+  });
+  
+  // 点击面板外部关闭
+  document.addEventListener('click', handleSettingsOutsideClick);
+}
+
+// 切换网站禁用状态
+async function toggleSiteDisabled(host) {
+  try {
+    const result = await chrome.storage.sync.get(['disabledSites']);
+    let disabledSites = result.disabledSites || [];
+    
+    const index = disabledSites.indexOf(host);
+    if (index === -1) {
+      disabledSites.push(host);
+      if (host === window.location.hostname) {
+        isDisabledSite = true;
+        hideAllButtons();
+      }
+      showMessage(`已禁用 ${host}`, 'info');
+    } else {
+      disabledSites.splice(index, 1);
+      if (host === window.location.hostname) {
+        isDisabledSite = false;
+        showMessage(`已启用 ${host}，刷新页面生效`, 'success');
+      }
+    }
+    
+    await chrome.storage.sync.set({ disabledSites });
+  } catch (e) {
+    showMessage('操作失败', 'error');
+  }
+}
+
+// 从禁用列表移除网站
+async function removeSiteFromDisabled(host) {
+  try {
+    const result = await chrome.storage.sync.get(['disabledSites']);
+    let disabledSites = result.disabledSites || [];
+    
+    const index = disabledSites.indexOf(host);
+    if (index !== -1) {
+      disabledSites.splice(index, 1);
+      await chrome.storage.sync.set({ disabledSites });
+      
+      if (host === window.location.hostname) {
+        isDisabledSite = false;
+        showMessage(`已启用 ${host}，刷新页面生效`, 'success');
+      } else {
+        showMessage(`已解除禁用 ${host}`, 'success');
+      }
+    }
+  } catch (e) {
+    showMessage('操作失败', 'error');
+  }
+}
+
+// 隐藏所有悬浮按钮
+function hideAllButtons() {
+  const allButtons = document.querySelectorAll('.table-extractor-button-container');
+  allButtons.forEach(btn => btn.style.display = 'none');
+  if (extractPanel) {
+    extractPanel.remove();
+    extractPanel = null;
+  }
+}
+
+// 关闭设置面板
+function closeSettingsPanel() {
+  if (settingsPanel) {
+    settingsPanel.remove();
+    settingsPanel = null;
+    document.removeEventListener('click', handleSettingsOutsideClick);
+  }
+}
+
+// 处理点击设置面板外部
+function handleSettingsOutsideClick(e) {
+  if (settingsPanel && !settingsPanel.contains(e.target) && 
+      !e.target.classList.contains('table-extractor-settings-button')) {
+    closeSettingsPanel();
+  }
 }
 
 // 监听动态内容

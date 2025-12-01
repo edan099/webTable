@@ -68,6 +68,254 @@
   transform: scale(0.95) rotate(90deg);
 }
 
+/* 设置按钮 */
+.table-extractor-settings-button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(100, 116, 139, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.4);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.table-extractor-settings-button:hover {
+  background: rgba(71, 85, 105, 1);
+  transform: scale(1.1) rotate(45deg);
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.6);
+}
+
+.table-extractor-settings-button:active {
+  transform: scale(0.95) rotate(45deg);
+}
+
+/* 禁用按钮 */
+.table-extractor-disable-button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.table-extractor-disable-button:hover {
+  background: rgba(220, 38, 38, 1);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+}
+
+.table-extractor-disable-button:active {
+  transform: scale(0.95);
+}
+
+/* 设置面板 */
+.table-extractor-settings-panel {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 400px !important;
+  max-width: 90vw !important;
+  max-height: 70vh !important;
+  background: white !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+  z-index: 2147483647 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  animation: panelFadeIn 0.3s ease;
+  overflow: hidden !important;
+}
+
+.settings-panel-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 16px 20px !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+}
+
+.settings-panel-header h3 {
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+
+.settings-close-btn {
+  background: rgba(255,255,255,0.2) !important;
+  border: none !important;
+  color: white !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s !important;
+}
+
+.settings-close-btn:hover {
+  background: rgba(255,255,255,0.3) !important;
+  transform: rotate(90deg) !important;
+}
+
+.settings-panel-content {
+  padding: 20px !important;
+  overflow-y: auto !important;
+  max-height: calc(70vh - 60px) !important;
+}
+
+.settings-section {
+  margin-bottom: 20px !important;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0 !important;
+}
+
+.settings-current-site {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 12px !important;
+  background: #f8f9fa !important;
+  border-radius: 8px !important;
+  margin-bottom: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.settings-label {
+  font-size: 12px !important;
+  color: #666 !important;
+}
+
+.settings-host {
+  font-size: 13px !important;
+  color: #333 !important;
+  font-family: monospace !important;
+  flex: 1 !important;
+  word-break: break-all !important;
+}
+
+.settings-status {
+  font-size: 11px !important;
+  padding: 2px 8px !important;
+  border-radius: 10px !important;
+}
+
+.settings-status.enabled {
+  background: #d3f9d8 !important;
+  color: #2f9e44 !important;
+}
+
+.settings-status.disabled {
+  background: #ffe3e3 !important;
+  color: #e03131 !important;
+}
+
+.settings-toggle-btn {
+  width: 100% !important;
+  padding: 10px 16px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.settings-toggle-btn.disable {
+  background: #ff6b6b !important;
+  color: white !important;
+}
+
+.settings-toggle-btn.disable:hover {
+  background: #ee5a5a !important;
+}
+
+.settings-toggle-btn.enable {
+  background: #51cf66 !important;
+  color: white !important;
+}
+
+.settings-toggle-btn.enable:hover {
+  background: #40c057 !important;
+}
+
+.settings-section-title {
+  font-size: 13px !important;
+  color: #666 !important;
+  margin-bottom: 10px !important;
+}
+
+.settings-disabled-list {
+  max-height: 200px !important;
+  overflow-y: auto !important;
+}
+
+.settings-disabled-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 8px 12px !important;
+  background: #f8f9fa !important;
+  border-radius: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+.settings-disabled-host {
+  font-size: 12px !important;
+  color: #666 !important;
+  font-family: monospace !important;
+  word-break: break-all !important;
+  flex: 1 !important;
+  margin-right: 8px !important;
+}
+
+.settings-remove-btn {
+  background: none !important;
+  border: none !important;
+  color: #aaa !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  padding: 4px !important;
+  border-radius: 4px !important;
+  transition: all 0.2s !important;
+}
+
+.settings-remove-btn:hover {
+  background: #ffecec !important;
+  color: #ff6b6b !important;
+}
+
+.settings-empty {
+  text-align: center !important;
+  color: #aaa !important;
+  font-size: 12px !important;
+  padding: 20px 0 !important;
+}
+
 /* 提取面板 */
 .table-extractor-panel {
   position: fixed !important;
