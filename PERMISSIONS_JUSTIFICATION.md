@@ -8,12 +8,7 @@
 
 ## 📋 当前使用的权限
 
-### 1. activeTab 权限
-```json
-"permissions": ["activeTab"]
-```
-
-### 2. 主机权限（content_scripts）
+### 主机权限（content_scripts）
 ```json
 "content_scripts": [
   {
@@ -53,9 +48,6 @@
    • 不访问或修改用户输入的敏感信息
    • 仅在用户主动点击提取按钮时读取表格数据
    • 开源代码，可供审计
-
-2. 【activeTab 权限】
-   理由：用于访问当前标签页的表格数据，仅在用户明确操作时使用。
 ```
 
 ---
@@ -85,9 +77,6 @@ Permission Usage Explanation:
    • Does not access or modify sensitive user input
    • Only reads table data when user explicitly clicks the extraction button
    • Open source code, available for audit
-
-2. [activeTab Permission]
-   Justification: Used to access table data on the current tab, only when user explicitly interacts.
 ```
 
 ---
@@ -193,7 +182,6 @@ Permission Usage Explanation:
 
 ## 权限使用
 - **所有网站访问权限**：仅用于检测和提取用户主动选择的表格数据
-- **activeTab 权限**：仅用于访问当前标签页内容
 
 ## 数据处理
 - 所有数据处理完全在本地进行
