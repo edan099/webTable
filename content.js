@@ -1,4 +1,8 @@
 // 网页表格识别与导出器 - Content Script
+
+// 安全设置 HTML 内容（仅用于可信的静态模板）
+const safeSetHTML = (el, html) => { el.insertAdjacentHTML('afterbegin', html); };
+
 // 全局变量
 let currentTable = null;
 let extractPanel = null;
@@ -21,9 +25,8 @@ async function loadFilterConfig() {
     if (result.tableFilterConfig) {
       filterConfig = { ...filterConfig, ...result.tableFilterConfig };
     }
-    console.log('[表格提取工具] 配置已加载:', filterConfig);
   } catch (e) {
-    console.log('[表格提取工具] 加载过滤配置失败', e);
+    // 忽略配置加载错误，使用默认配置
   }
 }
 
@@ -33,7 +36,7 @@ async function saveFilterConfig(config) {
     filterConfig = { ...filterConfig, ...config };
     await chrome.storage.sync.set({ tableFilterConfig: filterConfig });
   } catch (e) {
-    console.log('[表格提取工具] 保存过滤配置失败', e);
+    // 忽略保存错误
   }
 }
 
@@ -80,12 +83,20 @@ function isDataTable(table) {
   return true;
 }
 
+// 获取当前页面标识（兼容 file:// 协议）
+function getCurrentHost() {
+  if (window.location.protocol === 'file:') {
+    return 'file://' + window.location.pathname;
+  }
+  return window.location.hostname;
+}
+
 // 检查当前网站是否被禁用
 async function checkDisabledStatus() {
   try {
     const result = await chrome.storage.sync.get(['disabledSites']);
     const disabledSites = result.disabledSites || [];
-    const currentHost = window.location.hostname;
+    const currentHost = getCurrentHost();
     isDisabledSite = disabledSites.includes(currentHost);
     return isDisabledSite;
   } catch (e) {
@@ -134,12 +145,16 @@ async function init() {
   // 检查当前网站是否被禁用
   const disabled = await checkDisabledStatus();
   if (disabled) {
-    console.log('[表格提取工具] 当前网站已禁用');
     return;
   }
   
   // 扫描页面中的所有表格
   scanTables();
+  
+  // iframe 中可能内容加载较晚，延迟再扫描几次
+  setTimeout(scanTables, 500);
+  setTimeout(scanTables, 1500);
+  setTimeout(scanTables, 3000);
   
   // 监听动态加载的内容
   observeDynamicContent();
@@ -170,7 +185,8 @@ function scanTables() {
   
   // 1. 扫描标准 HTML table 元素
   const tables = document.querySelectorAll('table');
-  tables.forEach(table => {
+  
+  tables.forEach((table) => {
     // 跳过 Element UI 等组件库内部的 table（它们会被外层 div 处理）
     if (isNestedInComponentTable(table)) {
       return;
@@ -296,7 +312,6 @@ function addFloatingButton(table) {
         updatePosition();
         buttonContainer.classList.add('visible', 'always-visible');
         currentTable = table;
-        console.log('[表格提取工具] 始终显示按钮已定位');
       }
       
       // 超过最大检测次数，停止轮询
@@ -369,7 +384,7 @@ function addFloatingButton(table) {
   disableBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
     menuContainer.classList.remove('show');
-    const currentHost = window.location.hostname;
+    const currentHost = getCurrentHost();
     
     try {
       // 获取当前禁用列表
@@ -1259,7 +1274,7 @@ async function showSettingsPanel() {
   // 如果面板已存在，先移除
   closeSettingsPanel();
   
-  const currentHost = window.location.hostname;
+  const currentHost = getCurrentHost();
   
   // 获取禁用列表
   let disabledSites = [];
@@ -1273,7 +1288,7 @@ async function showSettingsPanel() {
   // 创建面板
   settingsPanel = document.createElement('div');
   settingsPanel.className = 'table-extractor-settings-panel';
-  settingsPanel.innerHTML = `
+  safeSetHTML(settingsPanel, `
     <div class="settings-panel-header">
       <h3>⚙️ 设置</h3>
       <button class="settings-close-btn" title="关闭">✕</button>
@@ -1335,7 +1350,7 @@ async function showSettingsPanel() {
         </div>
       </div>
     </div>
-  `;
+  `);
   
   document.body.appendChild(settingsPanel);
   
@@ -1426,14 +1441,14 @@ async function toggleSiteDisabled(host) {
     const index = disabledSites.indexOf(host);
     if (index === -1) {
       disabledSites.push(host);
-      if (host === window.location.hostname) {
+      if (host === getCurrentHost()) {
         isDisabledSite = true;
         hideAllButtons();
       }
       showMessage(`已禁用 ${host}`, 'info');
     } else {
       disabledSites.splice(index, 1);
-      if (host === window.location.hostname) {
+      if (host === getCurrentHost()) {
         isDisabledSite = false;
         showMessage(`已启用 ${host}，刷新页面生效`, 'success');
       }
@@ -1456,7 +1471,7 @@ async function removeSiteFromDisabled(host) {
       disabledSites.splice(index, 1);
       await chrome.storage.sync.set({ disabledSites });
       
-      if (host === window.location.hostname) {
+      if (host === getCurrentHost()) {
         isDisabledSite = false;
         showMessage(`已启用 ${host}，刷新页面生效`, 'success');
       } else {
@@ -1581,3 +1596,8 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
+// 监听 iframe 内容加载完成
+window.addEventListener('load', () => {
+  setTimeout(scanTables, 100);
+});

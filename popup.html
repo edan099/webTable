@@ -13,7 +13,7 @@
     
     body {
       width: 320px;
-      min-height: 200px;
+      min-height: 480px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       padding: 16px;
@@ -176,6 +176,76 @@
       background: #ffe3e3;
       color: #e03131;
     }
+    
+    .settings-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+    
+    .settings-title {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .setting-item {
+      margin-bottom: 12px;
+    }
+    
+    .setting-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #333;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    
+    .setting-label:hover {
+      background: #f3f4f6;
+    }
+    
+    .setting-label input[type="checkbox"],
+    .setting-label input[type="radio"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #667eea;
+    }
+    
+    .setting-sub {
+      margin-left: 24px;
+      margin-top: 8px;
+    }
+    
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .setting-row input[type="number"] {
+      width: 50px;
+      padding: 4px 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
   </style>
 </head>
 <body>
@@ -193,6 +263,42 @@
     <button id="toggleBtn" class="toggle-btn disable">
       <span>🚫</span> 禁用此网站
     </button>
+    
+    <!-- 按钮显示模式 -->
+    <div class="settings-section">
+      <div class="settings-title">👁️ 按钮显示</div>
+      <div class="radio-group">
+        <label class="setting-label">
+          <input type="radio" name="hoverMode" value="hover" id="hoverModeHover">
+          鼠标移到表格时显示
+        </label>
+        <label class="setting-label">
+          <input type="radio" name="hoverMode" value="always" id="hoverModeAlways">
+          始终显示
+        </label>
+      </div>
+    </div>
+    
+    <!-- 智能过滤 -->
+    <div class="settings-section">
+      <div class="settings-title">🧠 智能过滤</div>
+      <div class="setting-item">
+        <label class="setting-label">
+          <input type="checkbox" id="filterEnabled">
+          启用智能过滤（自动跳过布局表格）
+        </label>
+        <div class="setting-sub" id="filterOptions">
+          <div class="setting-row">
+            <span>最小行数</span>
+            <input type="number" id="minRows" min="1" max="10" value="2">
+          </div>
+          <div class="setting-row">
+            <span>最小列数</span>
+            <input type="number" id="minCols" min="1" max="10" value="2">
+          </div>
+        </div>
+      </div>
+    </div>
     
     <div class="disabled-list">
       <div class="disabled-list-header">

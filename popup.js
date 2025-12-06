@@ -2,6 +2,12 @@
 
 let currentHost = '';
 let disabledSites = [];
+let filterConfig = {
+  enabled: true,
+  minRows: 2,
+  minCols: 2,
+  hoverMode: 'hover'
+};
 
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -10,21 +16,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (tab && tab.url) {
     try {
       const url = new URL(tab.url);
-      currentHost = url.hostname;
+      // file:// 协议没有 hostname，使用 "file://" + pathname
+      if (url.protocol === 'file:') {
+        currentHost = 'file://' + url.pathname;
+      } else {
+        currentHost = url.hostname;
+      }
       document.getElementById('currentUrl').textContent = currentHost;
     } catch (e) {
       document.getElementById('currentUrl').textContent = '无法获取';
     }
   }
   
-  // 加载禁用列表
+  // 加载禁用列表和配置
   await loadDisabledSites();
+  await loadFilterConfig();
   
   // 更新 UI
   updateUI();
+  updateConfigUI();
   
   // 绑定事件
   document.getElementById('toggleBtn').addEventListener('click', toggleCurrentSite);
+  bindConfigEvents();
 });
 
 // 加载禁用的网站列表
@@ -101,21 +115,90 @@ function updateUI() {
   
   countEl.textContent = disabledSites.length;
   
+  itemsEl.textContent = '';
+  
   if (disabledSites.length === 0) {
-    itemsEl.innerHTML = '<div class="empty-tip">暂无禁用的网站</div>';
+    const emptyTip = document.createElement('div');
+    emptyTip.className = 'empty-tip';
+    emptyTip.textContent = '暂无禁用的网站';
+    itemsEl.appendChild(emptyTip);
   } else {
-    itemsEl.innerHTML = disabledSites.map(host => `
-      <div class="disabled-item">
-        <span class="disabled-item-url">${host}</span>
-        <button class="remove-btn" data-host="${host}" title="解除禁用">✕</button>
-      </div>
-    `).join('');
-    
-    // 绑定移除按钮事件
-    itemsEl.querySelectorAll('.remove-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        removeSite(btn.dataset.host);
-      });
+    disabledSites.forEach(host => {
+      const item = document.createElement('div');
+      item.className = 'disabled-item';
+      
+      const urlSpan = document.createElement('span');
+      urlSpan.className = 'disabled-item-url';
+      urlSpan.textContent = host;
+      
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.dataset.host = host;
+      removeBtn.title = '解除禁用';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => removeSite(host));
+      
+      item.appendChild(urlSpan);
+      item.appendChild(removeBtn);
+      itemsEl.appendChild(item);
     });
   }
+}
+
+// 加载过滤配置
+async function loadFilterConfig() {
+  const result = await chrome.storage.sync.get(['tableFilterConfig']);
+  if (result.tableFilterConfig) {
+    filterConfig = { ...filterConfig, ...result.tableFilterConfig };
+  }
+}
+
+// 保存过滤配置
+async function saveFilterConfig() {
+  await chrome.storage.sync.set({ tableFilterConfig: filterConfig });
+}
+
+// 更新配置 UI
+function updateConfigUI() {
+  // 显示模式
+  document.getElementById('hoverModeHover').checked = filterConfig.hoverMode === 'hover';
+  document.getElementById('hoverModeAlways').checked = filterConfig.hoverMode === 'always';
+  
+  // 智能过滤
+  document.getElementById('filterEnabled').checked = filterConfig.enabled;
+  document.getElementById('minRows').value = filterConfig.minRows;
+  document.getElementById('minCols').value = filterConfig.minCols;
+  
+  // 过滤选项显示/隐藏
+  document.getElementById('filterOptions').style.opacity = filterConfig.enabled ? '1' : '0.5';
+}
+
+// 绑定配置事件
+function bindConfigEvents() {
+  // 显示模式
+  document.querySelectorAll('input[name="hoverMode"]').forEach(radio => {
+    radio.addEventListener('change', async (e) => {
+      filterConfig.hoverMode = e.target.value;
+      await saveFilterConfig();
+    });
+  });
+  
+  // 智能过滤开关
+  document.getElementById('filterEnabled').addEventListener('change', async (e) => {
+    filterConfig.enabled = e.target.checked;
+    document.getElementById('filterOptions').style.opacity = e.target.checked ? '1' : '0.5';
+    await saveFilterConfig();
+  });
+  
+  // 最小行数
+  document.getElementById('minRows').addEventListener('change', async (e) => {
+    filterConfig.minRows = parseInt(e.target.value) || 2;
+    await saveFilterConfig();
+  });
+  
+  // 最小列数
+  document.getElementById('minCols').addEventListener('change', async (e) => {
+    filterConfig.minCols = parseInt(e.target.value) || 2;
+    await saveFilterConfig();
+  });
 }
