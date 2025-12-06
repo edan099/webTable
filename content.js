@@ -5,6 +5,81 @@ let extractPanel = null;
 let settingsPanel = null;
 let isDisabledSite = false;
 
+// 智能过滤配置（默认值）
+let filterConfig = {
+  enabled: true,           // 是否启用智能过滤
+  minRows: 2,              // 最小行数
+  minCols: 2,              // 最小列数
+  maxInteractiveRatio: 0.7, // 交互元素占比阈值
+  hoverMode: 'hover'       // 显示模式: 'always' 始终显示, 'hover' 鼠标悬停显示(默认)
+};
+
+// 加载过滤配置
+async function loadFilterConfig() {
+  try {
+    const result = await chrome.storage.sync.get(['tableFilterConfig']);
+    if (result.tableFilterConfig) {
+      filterConfig = { ...filterConfig, ...result.tableFilterConfig };
+    }
+    console.log('[表格提取工具] 配置已加载:', filterConfig);
+  } catch (e) {
+    console.log('[表格提取工具] 加载过滤配置失败', e);
+  }
+}
+
+// 保存过滤配置
+async function saveFilterConfig(config) {
+  try {
+    filterConfig = { ...filterConfig, ...config };
+    await chrome.storage.sync.set({ tableFilterConfig: filterConfig });
+  } catch (e) {
+    console.log('[表格提取工具] 保存过滤配置失败', e);
+  }
+}
+
+// 智能判断是否为数据表格
+function isDataTable(table) {
+  // 如果未启用智能过滤，直接返回 true
+  if (!filterConfig.enabled) return true;
+  
+  // 1. role="presentation" 明确表示布局表格
+  if (table.getAttribute('role') === 'presentation') return false;
+  
+  // 2. 检测行列数
+  const rows = table.querySelectorAll('tr');
+  if (rows.length < filterConfig.minRows) return false;
+  
+  const firstRow = rows[0];
+  const cols = firstRow ? firstRow.querySelectorAll('th, td').length : 0;
+  if (cols < filterConfig.minCols) return false;
+  
+  // 3. 检测交互元素占比（布局表格通常包含大量链接、按钮、图片）
+  const cells = table.querySelectorAll('td');
+  if (cells.length === 0) return true; // 只有 th 的表格认为是数据表格
+  
+  let interactiveCount = 0;
+  cells.forEach(cell => {
+    // 检查单元格是否主要是交互元素
+    const hasInteractive = cell.querySelector('a, button, input, select, textarea, form');
+    const hasOnlyImage = cell.children.length === 1 && cell.querySelector('img');
+    if (hasInteractive || hasOnlyImage) {
+      interactiveCount++;
+    }
+  });
+  
+  const interactiveRatio = interactiveCount / cells.length;
+  if (interactiveRatio > filterConfig.maxInteractiveRatio) return false;
+  
+  // 4. 检测常见的布局表格 class
+  const layoutClasses = ['layout', 'nav', 'menu', 'toolbar', 'sidebar'];
+  const tableClasses = table.className.toLowerCase();
+  for (const cls of layoutClasses) {
+    if (tableClasses.includes(cls)) return false;
+  }
+  
+  return true;
+}
+
 // 检查当前网站是否被禁用
 async function checkDisabledStatus() {
   try {
@@ -53,6 +128,9 @@ function showMessage(message, type = 'success') {
 
 // 初始化插件
 async function init() {
+  // 加载过滤配置
+  await loadFilterConfig();
+  
   // 检查当前网站是否被禁用
   const disabled = await checkDisabledStatus();
   if (disabled) {
@@ -67,13 +145,38 @@ async function init() {
   observeDynamicContent();
 }
 
+// 清理已消失表格的按钮
+function cleanupButtons() {
+  const containers = document.querySelectorAll('.table-extractor-button-container');
+  containers.forEach(container => {
+    const table = container._associatedTable;
+    if (table) {
+      const rect = table.getBoundingClientRect();
+      // 表格不在 DOM 中或不可见，隐藏按钮
+      if (!document.body.contains(table) || rect.width === 0 || rect.height === 0) {
+        container.classList.remove('visible', 'always-visible');
+      } else if (filterConfig.hoverMode === 'always') {
+        // 表格可见，确保按钮显示
+        container.classList.add('visible', 'always-visible');
+      }
+    }
+  });
+}
+
 // 扫描页面中的所有表格
 function scanTables() {
+  // 先清理已消失表格的按钮
+  cleanupButtons();
+  
   // 1. 扫描标准 HTML table 元素
   const tables = document.querySelectorAll('table');
   tables.forEach(table => {
     // 跳过 Element UI 等组件库内部的 table（它们会被外层 div 处理）
     if (isNestedInComponentTable(table)) {
+      return;
+    }
+    // 智能过滤：跳过界面布局表格
+    if (!isDataTable(table)) {
       return;
     }
     // 避免重复添加
@@ -124,98 +227,148 @@ function addFloatingButton(table) {
   const buttonContainer = document.createElement('div');
   buttonContainer.className = 'table-extractor-button-container';
   
-  // 创建悬浮按钮
+  // 创建主按钮（提取表格）
   const button = document.createElement('button');
   button.className = 'table-extractor-button';
-  button.innerHTML = '📊 提取表格';
-  button.style.display = 'none';
+  button.innerHTML = '📊 提取';
   
-  // 创建设置按钮
-  const settingsButton = document.createElement('button');
-  settingsButton.className = 'table-extractor-settings-button';
-  settingsButton.innerHTML = '⚙️';
-  settingsButton.title = '设置';
-  settingsButton.style.display = 'none';
+  // 创建更多按钮（折叠菜单触发器）
+  const moreButton = document.createElement('button');
+  moreButton.className = 'table-extractor-more-button';
+  moreButton.innerHTML = '⋯';
+  moreButton.title = '更多选项';
   
-  // 创建禁用按钮
-  const disableButton = document.createElement('button');
-  disableButton.className = 'table-extractor-disable-button';
-  disableButton.innerHTML = '🚫';
-  disableButton.title = '禁用此网站';
-  disableButton.style.display = 'none';
-  
-  // 创建关闭按钮
-  const closeButton = document.createElement('button');
-  closeButton.className = 'table-extractor-close-button';
-  closeButton.innerHTML = '✕';
-  closeButton.title = '隐藏按钮';
-  closeButton.style.display = 'none';
+  // 创建折叠菜单
+  const menuContainer = document.createElement('div');
+  menuContainer.className = 'table-extractor-menu';
+  menuContainer.innerHTML = `
+    <button class="menu-item menu-settings">⚙️ 设置</button>
+    <button class="menu-item menu-disable">🚫 禁用此网站</button>
+    <button class="menu-item menu-hide">✕ 隐藏按钮</button>
+  `;
   
   buttonContainer.appendChild(button);
-  buttonContainer.appendChild(settingsButton);
-  buttonContainer.appendChild(disableButton);
-  buttonContainer.appendChild(closeButton);
+  buttonContainer.appendChild(moreButton);
+  buttonContainer.appendChild(menuContainer);
   document.body.appendChild(buttonContainer);
+  
+  // 关联表格与按钮容器（用于清理）
+  buttonContainer._associatedTable = table;
   
   // 标记表格是否已隐藏按钮
   let isHidden = false;
   
-  // 鼠标悬停事件
-  table.addEventListener('mouseenter', (e) => {
-    if (isHidden || isDisabledSite) return; // 如果已隐藏或网站被禁用，不再显示
-    
+  // 更新按钮位置（右上角）
+  const updatePosition = () => {
     const rect = table.getBoundingClientRect();
-    buttonContainer.style.top = `${rect.top + window.scrollY}px`;
-    buttonContainer.style.left = `${rect.right + window.scrollX - 175}px`;
-    button.style.display = 'block';
-    settingsButton.style.display = 'block';
-    disableButton.style.display = 'block';
-    closeButton.style.display = 'block';
+    buttonContainer.style.top = `${rect.top + window.scrollY + 5}px`;
+    buttonContainer.style.right = `${document.documentElement.clientWidth - rect.right + 5}px`;
+    buttonContainer.style.left = 'auto';
+  };
+  
+  // 显示按钮
+  const showButtons = () => {
+    if (isHidden || isDisabledSite) return;
+    updatePosition();
+    buttonContainer.classList.add('visible');
     currentTable = table;
-  });
+  };
   
-  table.addEventListener('mouseleave', (e) => {
-    // 检查鼠标是否移动到按钮上
-    setTimeout(() => {
-      if (!buttonContainer.matches(':hover')) {
-        button.style.display = 'none';
-        settingsButton.style.display = 'none';
-        disableButton.style.display = 'none';
-        closeButton.style.display = 'none';
+  // 隐藏按钮
+  const hideButtons = () => {
+    if (filterConfig.hoverMode === 'always') return; // 始终显示模式不隐藏
+    buttonContainer.classList.remove('visible');
+    menuContainer.classList.remove('show');
+  };
+  
+  // 根据模式设置显示
+  if (filterConfig.hoverMode === 'always') {
+    // 始终显示模式 - 轮询检测表格渲染状态
+    let checkCount = 0;
+    const maxChecks = 60; // 最多检测 60 次（约 30 秒）
+    
+    const checkInterval = setInterval(() => {
+      checkCount++;
+      const rect = table.getBoundingClientRect();
+      
+      // 表格已渲染且可见
+      if (rect.width > 0 && rect.height > 0) {
+        updatePosition();
+        buttonContainer.classList.add('visible', 'always-visible');
+        currentTable = table;
+        console.log('[表格提取工具] 始终显示按钮已定位');
       }
-    }, 100);
-  });
+      
+      // 超过最大检测次数，停止轮询
+      if (checkCount >= maxChecks) {
+        clearInterval(checkInterval);
+      }
+    }, 500); // 每 500ms 检测一次
+    
+    // 监听滚动更新位置
+    window.addEventListener('scroll', updatePosition, { passive: true });
+    // 监听窗口大小变化
+    window.addEventListener('resize', updatePosition, { passive: true });
+  } else {
+    // 鼠标悬停模式
+    table.addEventListener('mouseenter', showButtons);
+    table.addEventListener('mouseleave', (e) => {
+      setTimeout(() => {
+        if (!buttonContainer.matches(':hover')) {
+          hideButtons();
+        }
+      }, 100);
+    });
+    buttonContainer.addEventListener('mouseleave', hideButtons);
+  }
   
-  buttonContainer.addEventListener('mouseleave', () => {
-    button.style.display = 'none';
-    settingsButton.style.display = 'none';
-    disableButton.style.display = 'none';
-    closeButton.style.display = 'none';
-  });
+  // 菜单显示/隐藏控制
+  let menuHideTimeout = null;
+  
+  const showMenu = () => {
+    if (menuHideTimeout) {
+      clearTimeout(menuHideTimeout);
+      menuHideTimeout = null;
+    }
+    menuContainer.classList.add('show');
+  };
+  
+  const hideMenuDelayed = () => {
+    menuHideTimeout = setTimeout(() => {
+      menuContainer.classList.remove('show');
+    }, 300); // 300ms 延迟
+  };
+  
+  // 鼠标进入更多按钮或菜单时显示
+  moreButton.addEventListener('mouseenter', showMenu);
+  menuContainer.addEventListener('mouseenter', showMenu);
+  
+  // 鼠标离开更多按钮或菜单时延迟隐藏
+  moreButton.addEventListener('mouseleave', hideMenuDelayed);
+  menuContainer.addEventListener('mouseleave', hideMenuDelayed);
   
   // 点击提取按钮显示提取面板
   button.addEventListener('click', (e) => {
     e.stopPropagation();
+    currentTable = table;
     showExtractPanel(table);
-    button.style.display = 'none';
-    settingsButton.style.display = 'none';
-    disableButton.style.display = 'none';
-    closeButton.style.display = 'none';
   });
   
-  // 点击设置按钮显示设置面板
-  settingsButton.addEventListener('click', (e) => {
+  // 菜单项点击事件
+  const settingsBtn = menuContainer.querySelector('.menu-settings');
+  const disableBtn = menuContainer.querySelector('.menu-disable');
+  const hideBtn = menuContainer.querySelector('.menu-hide');
+  
+  settingsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    menuContainer.classList.remove('show');
     showSettingsPanel();
-    button.style.display = 'none';
-    settingsButton.style.display = 'none';
-    disableButton.style.display = 'none';
-    closeButton.style.display = 'none';
   });
   
   // 点击禁用按钮禁用当前网站
-  disableButton.addEventListener('click', async (e) => {
+  disableBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
+    menuContainer.classList.remove('show');
     const currentHost = window.location.hostname;
     
     try {
@@ -234,7 +387,7 @@ function addFloatingButton(table) {
       
       // 隐藏所有按钮
       const allButtons = document.querySelectorAll('.table-extractor-button-container');
-      allButtons.forEach(btn => btn.style.display = 'none');
+      allButtons.forEach(btn => btn.classList.remove('visible'));
       
       // 关闭提取面板和设置面板
       if (extractPanel) {
@@ -249,15 +402,12 @@ function addFloatingButton(table) {
     }
   });
   
-  // 点击关闭按钮隐藏悬浮按钮
-  closeButton.addEventListener('click', (e) => {
+  // 点击隐藏按钮隐藏悬浮按钮
+  hideBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     isHidden = true;
-    button.style.display = 'none';
-    settingsButton.style.display = 'none';
-    disableButton.style.display = 'none';
-    closeButton.style.display = 'none';
-    // 显示提示消息
+    buttonContainer.classList.remove('visible', 'always-visible');
+    menuContainer.classList.remove('show');
     showMessage('已隐藏此表格的提取按钮，刷新页面可恢复', 'info');
   });
 }
@@ -280,9 +430,11 @@ function showExtractPanel(table) {
       <button class="close-btn" title="关闭">✕</button>
     </div>
     <div class="panel-tabs">
-      <button class="tab-btn active" data-format="json">🟢 导出 JSON</button>
-      <button class="tab-btn" data-format="csv">🔵 导出 CSV</button>
-      <button class="tab-btn" data-format="sql">🟣 导出 SQL</button>
+      <button class="tab-btn active" data-format="preview">👁️ 预览</button>
+      <button class="tab-btn" data-format="markdown">📝 MD</button>
+      <button class="tab-btn" data-format="json">🟢 JSON</button>
+      <button class="tab-btn" data-format="csv">🔵 CSV</button>
+      <button class="tab-btn" data-format="sql">🟣 SQL</button>
     </div>
     <div class="panel-config" id="sqlConfig" style="display: none;">
       <div class="config-item">
@@ -292,10 +444,23 @@ function showExtractPanel(table) {
       </div>
     </div>
     <div class="panel-content">
-      <div class="output-area">
+      <div class="output-area" id="outputArea" style="display: none;">
         <pre id="outputContent"></pre>
       </div>
-      <div class="panel-actions">
+      <div class="preview-area" id="previewArea" style="display: flex;">
+        <div class="preview-toolbar">
+          <span class="preview-hint">点击拖拽选择单元格，可复制选中区域</span>
+          <button class="preview-fullscreen-btn" title="全屏查看">⛶ 全屏</button>
+        </div>
+        <div class="preview-table-container">
+          <table class="preview-table" id="previewTable"></table>
+        </div>
+        <div class="preview-selection-info" id="selectionInfo" style="display: none;">
+          已选择 <span id="selectedCount">0</span> 个单元格
+          <button class="preview-copy-btn">📋 复制选中</button>
+        </div>
+      </div>
+      <div class="panel-actions" style="display: none;">
         <button class="action-btn copy-btn">📋 复制结果</button>
         <button class="action-btn download-btn">💾 下载文件</button>
       </div>
@@ -307,21 +472,21 @@ function showExtractPanel(table) {
   // 绑定事件
   bindPanelEvents();
   
-  // 默认显示 JSON 格式
-  extractData('json');
+  // 默认显示预览
+  renderPreviewTable();
 }
 
 // 绑定面板事件
 function bindPanelEvents() {
   // 关闭按钮
-  extractPanel.querySelector('.close-btn').addEventListener('click', () => {
-    extractPanel.remove();
-    extractPanel = null;
-  });
+  extractPanel.querySelector('.close-btn').addEventListener('click', closeExtractPanel);
   
   // 标签切换
   const tabBtns = extractPanel.querySelectorAll('.tab-btn');
   const sqlConfig = extractPanel.querySelector('#sqlConfig');
+  const outputArea = extractPanel.querySelector('#outputArea');
+  const previewArea = extractPanel.querySelector('#previewArea');
+  const panelActions = extractPanel.querySelector('.panel-actions');
   
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -330,13 +495,20 @@ function bindPanelEvents() {
       const format = btn.getAttribute('data-format');
       
       // 显示或隐藏 SQL 配置区
-      if (format === 'sql') {
-        sqlConfig.style.display = 'block';
-      } else {
-        sqlConfig.style.display = 'none';
-      }
+      sqlConfig.style.display = format === 'sql' ? 'block' : 'none';
       
-      extractData(format);
+      // 切换预览模式和输出模式
+      if (format === 'preview') {
+        outputArea.style.display = 'none';
+        previewArea.style.display = 'flex';
+        panelActions.style.display = 'none';
+        renderPreviewTable();
+      } else {
+        outputArea.style.display = 'block';
+        previewArea.style.display = 'none';
+        panelActions.style.display = 'flex';
+        extractData(format);
+      }
     });
   });
   
@@ -372,17 +544,57 @@ function bindPanelEvents() {
     downloadFile(content, format);
   });
   
+  // 全屏按钮
+  const fullscreenBtn = extractPanel.querySelector('.preview-fullscreen-btn');
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+  }
+  
+  // 预览区复制选中按钮
+  const previewCopyBtn = extractPanel.querySelector('.preview-copy-btn');
+  if (previewCopyBtn) {
+    previewCopyBtn.addEventListener('click', copySelectedCells);
+  }
+  
+  // Cmd+C / Ctrl+C 快捷键复制选中
+  document.addEventListener('keydown', handleCopyShortcut);
+  
   // 点击面板外部关闭
   document.addEventListener('click', handleOutsideClick);
+}
+
+// 处理 Cmd+C / Ctrl+C 快捷键
+function handleCopyShortcut(e) {
+  if (!extractPanel) return;
+  
+  // 检查是否是预览模式且有选中
+  const previewArea = extractPanel.querySelector('#previewArea');
+  if (previewArea && previewArea.style.display !== 'none') {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+      const hasSelection = previewSelection.startRow !== -1 || previewSelection.startCol !== -1;
+      if (hasSelection) {
+        e.preventDefault();
+        copySelectedCells();
+      }
+    }
+  }
 }
 
 // 处理点击面板外部
 function handleOutsideClick(e) {
   if (extractPanel && !extractPanel.contains(e.target) && !e.target.classList.contains('table-extractor-button')) {
+    closeExtractPanel();
+  }
+}
+
+// 关闭提取面板
+function closeExtractPanel() {
+  if (extractPanel) {
     extractPanel.remove();
     extractPanel = null;
-    document.removeEventListener('click', handleOutsideClick);
   }
+  document.removeEventListener('click', handleOutsideClick);
+  document.removeEventListener('keydown', handleCopyShortcut);
 }
 
 // 提取表格数据
@@ -393,6 +605,9 @@ function extractData(format) {
   let output = '';
   
   switch (format) {
+    case 'markdown':
+      output = convertToMarkdown(data);
+      break;
     case 'json':
       output = convertToJSON(data);
       break;
@@ -582,6 +797,25 @@ function parseAntDesignTable(antTable) {
   return data;
 }
 
+// 转换为 Markdown 格式
+function convertToMarkdown(data) {
+  const lines = [];
+  
+  // 添加表头
+  lines.push('| ' + data.headers.map(h => h.replace(/\|/g, '\\|')).join(' | ') + ' |');
+  
+  // 添加分隔行
+  lines.push('| ' + data.headers.map(() => '---').join(' | ') + ' |');
+  
+  // 添加数据行
+  data.rows.forEach(row => {
+    const cells = row.map(cell => String(cell).replace(/\|/g, '\\|').replace(/\n/g, '<br>'));
+    lines.push('| ' + cells.join(' | ') + ' |');
+  });
+  
+  return lines.join('\n');
+}
+
 // 转换为 JSON 格式
 function convertToJSON(data) {
   const result = data.rows.map(row => {
@@ -652,6 +886,315 @@ function convertToSQL(data, tableName = 'table_data') {
   return lines.join('\n');
 }
 
+// ============ 预览功能 ============
+
+// 预览选择状态
+let previewSelection = {
+  isSelecting: false,
+  startRow: null,
+  startCol: null,
+  endRow: -1,
+  endCol: -1
+};
+
+// 渲染预览表格
+function renderPreviewTable() {
+  if (!currentTable || !extractPanel) return;
+  
+  const data = parseTable(currentTable);
+  const previewTable = extractPanel.querySelector('#previewTable');
+  if (!previewTable) return;
+  
+  // 清空表格
+  previewTable.innerHTML = '';
+  
+  // 添加表头
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  data.headers.forEach((header, colIndex) => {
+    const th = document.createElement('th');
+    th.textContent = header;
+    th.dataset.row = '-1';
+    th.dataset.col = colIndex;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  previewTable.appendChild(thead);
+  
+  // 添加数据行
+  const tbody = document.createElement('tbody');
+  data.rows.forEach((row, rowIndex) => {
+    const tr = document.createElement('tr');
+    row.forEach((cell, colIndex) => {
+      const td = document.createElement('td');
+      td.textContent = cell;
+      td.dataset.row = rowIndex;
+      td.dataset.col = colIndex;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  previewTable.appendChild(tbody);
+  
+  // 绑定选择事件
+  bindPreviewSelectionEvents(previewTable);
+}
+
+// 绑定预览表格选择事件
+function bindPreviewSelectionEvents(table) {
+  const cells = table.querySelectorAll('td, th');
+  const container = extractPanel.querySelector('.preview-table-container');
+  let scrollInterval = null;
+  let scrollDirection = { top: false, bottom: false, left: false, right: false };
+  
+  // 获取表格行列数
+  const allRows = table.querySelectorAll('tr');
+  const maxRow = allRows.length - 2; // 减去表头行
+  const maxCol = allRows[0] ? allRows[0].querySelectorAll('th, td').length - 1 : 0;
+  
+  cells.forEach(cell => {
+    // 普通点击开始选择
+    cell.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      
+      const row = parseInt(cell.dataset.row);
+      const col = parseInt(cell.dataset.col);
+      
+      // Shift+点击：从上次选择位置到当前位置（支持表头）
+      if (e.shiftKey && previewSelection.startRow !== null) {
+        previewSelection.endRow = isNaN(row) ? -1 : row; // 表头 row 可能是 NaN
+        previewSelection.endCol = col;
+        updatePreviewSelection(table);
+        return;
+      }
+      
+      previewSelection.isSelecting = true;
+      previewSelection.startRow = isNaN(row) ? -1 : row;
+      previewSelection.startCol = col;
+      previewSelection.endRow = previewSelection.startRow;
+      previewSelection.endCol = previewSelection.startCol;
+      updatePreviewSelection(table);
+    });
+    
+    cell.addEventListener('mouseover', () => {
+      if (previewSelection.isSelecting) {
+        const row = parseInt(cell.dataset.row);
+        previewSelection.endRow = isNaN(row) ? -1 : row;
+        previewSelection.endCol = parseInt(cell.dataset.col);
+        updatePreviewSelection(table);
+      }
+    });
+  });
+  
+  // Cmd+方向键 快速跳到末尾
+  const handleKeydown = (e) => {
+    if (!e.metaKey && !e.ctrlKey) return;
+    if (!extractPanel || !extractPanel.contains(document.activeElement) && 
+        !container.matches(':hover')) return;
+    
+    const isArrowKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
+    if (!isArrowKey) return;
+    
+    e.preventDefault();
+    
+    const hasSelection = previewSelection.startRow !== null;
+    
+    switch (e.key) {
+      case 'ArrowUp':
+        container.scrollTop = 0;
+        if (hasSelection && (previewSelection.isSelecting || e.shiftKey)) {
+          previewSelection.endRow = -1; // 表头
+          updatePreviewSelection(table);
+        }
+        break;
+      case 'ArrowDown':
+        container.scrollTop = container.scrollHeight;
+        if (hasSelection && (previewSelection.isSelecting || e.shiftKey)) {
+          previewSelection.endRow = maxRow;
+          updatePreviewSelection(table);
+        }
+        break;
+      case 'ArrowLeft':
+        container.scrollLeft = 0;
+        if (hasSelection && (previewSelection.isSelecting || e.shiftKey)) {
+          previewSelection.endCol = 0;
+          updatePreviewSelection(table);
+        }
+        break;
+      case 'ArrowRight':
+        container.scrollLeft = container.scrollWidth;
+        if (hasSelection && (previewSelection.isSelecting || e.shiftKey)) {
+          previewSelection.endCol = maxCol;
+          updatePreviewSelection(table);
+        }
+        break;
+    }
+  };
+  
+  document.addEventListener('keydown', handleKeydown);
+  
+  // 全局鼠标移动监听（支持鼠标离开容器后继续滚动）
+  document.addEventListener('mousemove', (e) => {
+    if (!previewSelection.isSelecting) return;
+    
+    const rect = container.getBoundingClientRect();
+    const scrollSpeed = 20;
+    
+    // 检测鼠标相对于容器的位置
+    scrollDirection.top = e.clientY < rect.top;
+    scrollDirection.bottom = e.clientY > rect.bottom;
+    scrollDirection.left = e.clientX < rect.left;
+    scrollDirection.right = e.clientX > rect.right;
+    
+    // 边缘区域也触发
+    const edgeSize = 30;
+    if (!scrollDirection.top && e.clientY - rect.top < edgeSize) scrollDirection.top = true;
+    if (!scrollDirection.bottom && rect.bottom - e.clientY < edgeSize) scrollDirection.bottom = true;
+    
+    const shouldScroll = scrollDirection.top || scrollDirection.bottom || 
+                         scrollDirection.left || scrollDirection.right;
+    
+    if (shouldScroll && !scrollInterval) {
+      scrollInterval = setInterval(() => {
+        if (scrollDirection.top) container.scrollTop -= scrollSpeed;
+        if (scrollDirection.bottom) container.scrollTop += scrollSpeed;
+        if (scrollDirection.left) container.scrollLeft -= scrollSpeed;
+        if (scrollDirection.right) container.scrollLeft += scrollSpeed;
+        
+        // 更新选择到边缘
+        updateSelectionToEdge(table, container);
+      }, 30);
+    } else if (!shouldScroll && scrollInterval) {
+      clearInterval(scrollInterval);
+      scrollInterval = null;
+    }
+  });
+  
+  // 滚动时更新选择到边缘
+  function updateSelectionToEdge(table, container) {
+    const allCells = table.querySelectorAll('td');
+    if (allCells.length === 0) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    let maxRow = -1, minRow = Infinity;
+    
+    // 找到可见区域的最大/最小行
+    allCells.forEach(cell => {
+      const cellRect = cell.getBoundingClientRect();
+      if (cellRect.bottom > containerRect.top && cellRect.top < containerRect.bottom) {
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+        
+        // 只考虑已选列范围内的单元格
+        if (col >= Math.min(previewSelection.startCol, previewSelection.endCol) &&
+            col <= Math.max(previewSelection.startCol, previewSelection.endCol)) {
+          maxRow = Math.max(maxRow, row);
+          minRow = Math.min(minRow, row);
+        }
+      }
+    });
+    
+    // 根据滚动方向更新选择
+    if (scrollDirection.bottom && maxRow > previewSelection.endRow) {
+      previewSelection.endRow = maxRow;
+      updatePreviewSelection(table);
+    }
+    if (scrollDirection.top && minRow < previewSelection.endRow) {
+      previewSelection.endRow = minRow;
+      updatePreviewSelection(table);
+    }
+  }
+  
+  // 停止选择和滚动
+  document.addEventListener('mouseup', () => {
+    previewSelection.isSelecting = false;
+    if (scrollInterval) {
+      clearInterval(scrollInterval);
+      scrollInterval = null;
+    }
+  });
+}
+
+// 更新预览选择状态
+function updatePreviewSelection(table) {
+  const cells = table.querySelectorAll('td, th');
+  const minRow = Math.min(previewSelection.startRow, previewSelection.endRow);
+  const maxRow = Math.max(previewSelection.startRow, previewSelection.endRow);
+  const minCol = Math.min(previewSelection.startCol, previewSelection.endCol);
+  const maxCol = Math.max(previewSelection.startCol, previewSelection.endCol);
+  
+  let selectedCount = 0;
+  
+  cells.forEach(cell => {
+    const rawRow = cell.dataset.row;
+    const row = rawRow === undefined ? -1 : parseInt(rawRow); // 表头为 -1
+    const col = parseInt(cell.dataset.col);
+    
+    if (row >= minRow && row <= maxRow && col >= minCol && col <= maxCol) {
+      cell.classList.add('selected');
+      selectedCount++;
+    } else {
+      cell.classList.remove('selected');
+    }
+  });
+  
+  // 更新选择信息
+  const selectionInfo = extractPanel.querySelector('#selectionInfo');
+  const selectedCountSpan = extractPanel.querySelector('#selectedCount');
+  if (selectedCount > 0) {
+    selectionInfo.style.display = 'flex';
+    selectedCountSpan.textContent = selectedCount;
+  } else {
+    selectionInfo.style.display = 'none';
+  }
+}
+
+// 复制选中的单元格
+function copySelectedCells() {
+  if (!extractPanel) return;
+  if (previewSelection.startRow === null) return; // 没有选择
+  
+  const data = parseTable(currentTable);
+  const minRow = Math.min(previewSelection.startRow, previewSelection.endRow);
+  const maxRow = Math.max(previewSelection.startRow, previewSelection.endRow);
+  const minCol = Math.min(previewSelection.startCol, previewSelection.endCol);
+  const maxCol = Math.max(previewSelection.startCol, previewSelection.endCol);
+  
+  const lines = [];
+  
+  // 如果选择包含表头行
+  if (minRow === -1) {
+    const headerLine = data.headers.slice(minCol, maxCol + 1).join('\t');
+    lines.push(headerLine);
+  }
+  
+  // 添加数据行
+  const startDataRow = Math.max(0, minRow);
+  for (let r = startDataRow; r <= maxRow && r < data.rows.length; r++) {
+    const rowData = data.rows[r].slice(minCol, maxCol + 1);
+    lines.push(rowData.join('\t'));
+  }
+  
+  copyToClipboard(lines.join('\n'));
+}
+
+// 切换全屏
+function toggleFullscreen() {
+  if (!extractPanel) return;
+  
+  const isFullscreen = extractPanel.classList.contains('fullscreen');
+  
+  if (isFullscreen) {
+    extractPanel.classList.remove('fullscreen');
+    extractPanel.querySelector('.preview-fullscreen-btn').innerHTML = '⛶ 全屏';
+  } else {
+    extractPanel.classList.add('fullscreen');
+    extractPanel.querySelector('.preview-fullscreen-btn').innerHTML = '⛶ 退出全屏';
+  }
+}
+
+// ============ 工具函数 ============
+
 // 复制到剪贴板
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
@@ -673,6 +1216,7 @@ function copyToClipboard(text) {
 // 下载文件
 function downloadFile(content, format) {
   const extensions = {
+    markdown: 'md',
     json: 'json',
     csv: 'csv',
     sql: 'sql'
@@ -746,6 +1290,39 @@ async function showSettingsPanel() {
         </button>
       </div>
       <div class="settings-section">
+        <div class="settings-section-title">👁️ 按钮显示</div>
+        <div class="settings-radio-group">
+          <label class="settings-radio-label">
+            <input type="radio" name="hoverMode" value="hover" ${filterConfig.hoverMode === 'hover' ? 'checked' : ''}>
+            <span>鼠标移到表格时显示（默认）</span>
+          </label>
+          <label class="settings-radio-label">
+            <input type="radio" name="hoverMode" value="always" ${filterConfig.hoverMode === 'always' ? 'checked' : ''}>
+            <span>始终显示</span>
+          </label>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">🧠 智能过滤</div>
+        <div class="settings-filter-group">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="filterEnabled" ${filterConfig.enabled ? 'checked' : ''}>
+            <span>启用智能过滤（自动跳过布局表格）</span>
+          </label>
+        </div>
+        <div class="settings-filter-options" id="filterOptions" style="${filterConfig.enabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
+          <div class="settings-filter-item">
+            <label>最小行数</label>
+            <input type="number" id="filterMinRows" value="${filterConfig.minRows}" min="1" max="10">
+          </div>
+          <div class="settings-filter-item">
+            <label>最小列数</label>
+            <input type="number" id="filterMinCols" value="${filterConfig.minCols}" min="1" max="10">
+          </div>
+        </div>
+        <div class="settings-filter-hint">少于指定行列数的表格将被跳过</div>
+      </div>
+      <div class="settings-section">
         <div class="settings-section-title">📋 已禁用的网站 (${disabledSites.length})</div>
         <div class="settings-disabled-list">
           ${disabledSites.length === 0 ? '<div class="settings-empty">暂无禁用的网站</div>' : 
@@ -790,6 +1367,51 @@ function bindSettingsPanelEvents() {
       showSettingsPanel();
     });
   });
+  
+  // 显示模式选择
+  const hoverModeRadios = settingsPanel.querySelectorAll('input[name="hoverMode"]');
+  hoverModeRadios.forEach(radio => {
+    radio.addEventListener('change', async (e) => {
+      const hoverMode = e.target.value;
+      await saveFilterConfig({ hoverMode });
+      showMessage('已保存，刷新页面生效', 'success');
+    });
+  });
+  
+  // 智能过滤开关
+  const filterEnabledCheckbox = settingsPanel.querySelector('#filterEnabled');
+  const filterOptions = settingsPanel.querySelector('#filterOptions');
+  if (filterEnabledCheckbox) {
+    filterEnabledCheckbox.addEventListener('change', async (e) => {
+      const enabled = e.target.checked;
+      await saveFilterConfig({ enabled });
+      if (filterOptions) {
+        filterOptions.style.opacity = enabled ? '' : '0.5';
+        filterOptions.style.pointerEvents = enabled ? '' : 'none';
+      }
+      showMessage(enabled ? '智能过滤已启用，刷新页面生效' : '智能过滤已关闭，刷新页面生效', 'info');
+    });
+  }
+  
+  // 最小行数
+  const minRowsInput = settingsPanel.querySelector('#filterMinRows');
+  if (minRowsInput) {
+    minRowsInput.addEventListener('change', async (e) => {
+      const minRows = parseInt(e.target.value) || 2;
+      await saveFilterConfig({ minRows });
+      showMessage('已保存，刷新页面生效', 'success');
+    });
+  }
+  
+  // 最小列数
+  const minColsInput = settingsPanel.querySelector('#filterMinCols');
+  if (minColsInput) {
+    minColsInput.addEventListener('change', async (e) => {
+      const minCols = parseInt(e.target.value) || 2;
+      await saveFilterConfig({ minCols });
+      showMessage('已保存，刷新页面生效', 'success');
+    });
+  }
   
   // 点击面板外部关闭
   document.addEventListener('click', handleSettingsOutsideClick);
@@ -939,6 +1561,18 @@ function observeDynamicContent() {
     childList: true,
     subtree: true
   });
+  
+  // 始终显示模式下，用户点击后延迟扫描（无性能损耗）
+  if (filterConfig.hoverMode === 'always') {
+    let scanTimeout = null;
+    document.addEventListener('click', () => {
+      // 防抖：点击后 500ms 扫描一次
+      if (scanTimeout) clearTimeout(scanTimeout);
+      scanTimeout = setTimeout(() => {
+        scanTables();
+      }, 500);
+    }, { passive: true });
+  }
 }
 
 // 页面加载完成后初始化

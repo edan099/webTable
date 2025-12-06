@@ -8,33 +8,110 @@
   display: flex;
   gap: 4px;
   align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.table-extractor-button-container.visible {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* 悬浮按钮 */
 .table-extractor-button {
-  padding: 8px 16px;
+  padding: 6px 12px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 20px;
-  font-size: 14px;
+  border-radius: 16px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  transition: all 0.2s ease;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   white-space: nowrap;
-  backdrop-filter: blur(10px);
 }
 
 .table-extractor-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
 }
 
 .table-extractor-button:active {
   transform: translateY(0);
+}
+
+/* 更多按钮 */
+.table-extractor-more-button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(100, 116, 139, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.table-extractor-more-button:hover {
+  background: rgba(71, 85, 105, 1);
+  transform: scale(1.05);
+}
+
+/* 折叠菜单 */
+.table-extractor-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s ease;
+  min-width: 140px;
+  overflow: hidden;
+  z-index: 1000000;
+}
+
+.table-extractor-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.table-extractor-menu .menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.table-extractor-menu .menu-item:hover {
+  background: #f3f4f6;
+}
+
+.table-extractor-menu .menu-item:active {
+  background: #e5e7eb;
 }
 
 /* 关闭按钮 */
@@ -316,6 +393,115 @@
   padding: 20px 0 !important;
 }
 
+/* 智能过滤设置 */
+.settings-filter-group {
+  margin-bottom: 12px !important;
+}
+
+.settings-checkbox-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  color: #333 !important;
+}
+
+.settings-checkbox-label input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  cursor: pointer !important;
+  accent-color: #667eea !important;
+}
+
+/* Radio 按钮组 */
+.settings-radio-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.settings-radio-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  color: #333 !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  transition: background 0.15s ease !important;
+}
+
+.settings-radio-label:hover {
+  background: #f3f4f6 !important;
+}
+
+.settings-radio-label input[type="radio"] {
+  width: 16px !important;
+  height: 16px !important;
+  cursor: pointer !important;
+  accent-color: #667eea !important;
+}
+
+.settings-filter-options {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  background: #f8f9fa !important;
+  border-radius: 8px !important;
+  margin-bottom: 8px !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.settings-filter-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.settings-filter-item label {
+  font-size: 12px !important;
+  color: #666 !important;
+  min-width: 80px !important;
+}
+
+.settings-filter-item input[type="number"] {
+  width: 60px !important;
+  padding: 4px 8px !important;
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  text-align: center !important;
+}
+
+.settings-filter-item input[type="number"]:focus {
+  outline: none !important;
+  border-color: #667eea !important;
+}
+
+.settings-filter-item input[type="range"] {
+  flex: 1 !important;
+  height: 4px !important;
+  cursor: pointer !important;
+  accent-color: #667eea !important;
+}
+
+.settings-filter-item span {
+  font-size: 12px !important;
+  color: #667eea !important;
+  font-weight: 500 !important;
+  min-width: 40px !important;
+  text-align: right !important;
+}
+
+.settings-filter-hint {
+  font-size: 11px !important;
+  color: #999 !important;
+  line-height: 1.4 !important;
+}
+
 /* 提取面板 */
 .table-extractor-panel {
   position: fixed !important;
@@ -582,6 +768,141 @@
 
 .action-btn:active {
   transform: translateY(0);
+}
+
+/* 预览功能 */
+.preview-area {
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 300px !important;
+}
+
+.preview-toolbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 8px 12px !important;
+  background: #f8f9fa !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  flex-shrink: 0 !important;
+}
+
+.preview-hint {
+  font-size: 12px !important;
+  color: #666 !important;
+}
+
+.preview-fullscreen-btn {
+  padding: 6px 12px !important;
+  background: #667eea !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.preview-fullscreen-btn:hover {
+  background: #5a6fd6 !important;
+}
+
+.preview-table-container {
+  flex: 1 !important;
+  overflow: auto !important;
+  padding: 12px !important;
+}
+
+.preview-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 13px !important;
+  user-select: none !important;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 8px 12px !important;
+  border: 1px solid #e5e7eb !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+  max-width: 200px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  cursor: cell !important;
+}
+
+.preview-table th {
+  background: #f1f5f9 !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1 !important;
+}
+
+.preview-table td {
+  background: white !important;
+  color: #4b5563 !important;
+}
+
+.preview-table tr:hover td {
+  background: #f9fafb !important;
+}
+
+.preview-table th.selected,
+.preview-table td.selected {
+  background: rgba(102, 126, 234, 0.2) !important;
+  border-color: #667eea !important;
+}
+
+.preview-selection-info {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 12px !important;
+  background: #eef2ff !important;
+  border-top: 1px solid #c7d2fe !important;
+  font-size: 13px !important;
+  color: #4338ca !important;
+  flex-shrink: 0 !important;
+}
+
+.preview-copy-btn {
+  padding: 6px 14px !important;
+  background: #667eea !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.preview-copy-btn:hover {
+  background: #5a6fd6 !important;
+}
+
+/* 全屏模式 */
+.table-extractor-panel.fullscreen {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  border-radius: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+}
+
+.table-extractor-panel.fullscreen .preview-table-container {
+  max-height: none !important;
+}
+
+.table-extractor-panel.fullscreen .preview-table th,
+.table-extractor-panel.fullscreen .preview-table td {
+  max-width: none !important;
+  white-space: normal !important;
 }
 
 /* 提示消息 */
