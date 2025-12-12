@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "网页表格识别与导出器",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "自动识别网页表格（支持 Element UI、Ant Design），支持预览、行列多选复制，导出为 Markdown、JSON、CSV、SQL 格式",
   "author": "099edan",
   "browser_specific_settings": {

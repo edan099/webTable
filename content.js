@@ -442,7 +442,10 @@ function showExtractPanel(table) {
   extractPanel.innerHTML = `
     <div class="panel-header">
       <h3>📊 表格提取工具</h3>
-      <button class="close-btn" title="关闭">✕</button>
+      <div class="header-buttons">
+        <button class="fullscreen-btn" title="全屏">⛶</button>
+        <button class="close-btn" title="关闭">✕</button>
+      </div>
     </div>
     <div class="panel-tabs">
       <button class="tab-btn active" data-format="preview">👁️ 预览</button>
@@ -450,12 +453,43 @@ function showExtractPanel(table) {
       <button class="tab-btn" data-format="json">🟢 JSON</button>
       <button class="tab-btn" data-format="csv">🔵 CSV</button>
       <button class="tab-btn" data-format="sql">🟣 SQL</button>
+      <button class="tab-btn" data-format="excel">📊 Excel</button>
     </div>
     <div class="panel-config" id="sqlConfig" style="display: none;">
       <div class="config-item">
         <label for="tableNameInput">表名：</label>
         <input type="text" id="tableNameInput" value="table_data" placeholder="输入表名">
         <button class="refresh-btn" title="重新生成">🔄</button>
+      </div>
+      <div class="config-item" style="margin: 12px 0;">
+        <span class="config-label">模式：</span>
+        <div class="radio-group" style="display: inline-flex; gap: 12px;">
+          <label class="radio-option">
+            <input type="radio" name="sqlMode" value="insert" checked> INSERT
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="sqlMode" value="update"> UPDATE
+          </label>
+        </div>
+      </div>
+      <div class="sql-columns-block" id="sqlColumnNamesBlock">
+        <div class="sql-columns-title">列名设置：</div>
+        <div class="sql-columns-list" id="sqlColumnNames"></div>
+      </div>
+      <div class="sql-columns-block" id="sqlColumnSelectBlock">
+        <div class="sql-columns-title">列选择：</div>
+        <div class="sql-columns-block" id="sqlInsertBlock">
+          <div class="sql-columns-title">插入列：</div>
+          <div class="sql-columns-list" id="sqlInsertColumns"></div>
+        </div>
+        <div class="sql-columns-block" id="sqlUpdateSetBlock" style="display: none;">
+          <div class="sql-columns-title">SET 列：</div>
+          <div class="sql-columns-list" id="sqlUpdateSetColumns"></div>
+        </div>
+        <div class="sql-columns-block" id="sqlUpdateWhereBlock" style="display: none;">
+          <div class="sql-columns-title">WHERE 列：</div>
+          <div class="sql-columns-list" id="sqlUpdateWhereColumns"></div>
+        </div>
       </div>
     </div>
     <div class="panel-content">
@@ -465,7 +499,6 @@ function showExtractPanel(table) {
       <div class="preview-area" id="previewArea" style="display: flex;">
         <div class="preview-toolbar">
           <span class="preview-hint">点击拖拽选择单元格，可复制选中区域</span>
-          <button class="preview-fullscreen-btn" title="全屏查看">⛶ 全屏</button>
         </div>
         <div class="preview-table-container">
           <table class="preview-table" id="previewTable"></table>
@@ -475,9 +508,9 @@ function showExtractPanel(table) {
           <button class="preview-copy-btn">📋 复制选中</button>
         </div>
       </div>
-      <div class="panel-actions" style="display: none;">
-        <button class="action-btn copy-btn">📋 复制结果</button>
-        <button class="action-btn download-btn">💾 下载文件</button>
+      <div class="panel-actions" style="display: flex;">
+        <button class="action-btn copy-btn">📋 复制整表</button>
+        <button class="action-btn download-btn">💾 导出 Excel</button>
       </div>
     </div>
   `;
@@ -496,6 +529,52 @@ function bindPanelEvents() {
   // 关闭按钮
   extractPanel.querySelector('.close-btn').addEventListener('click', closeExtractPanel);
   
+  // 全屏按钮
+  const fullscreenBtn = extractPanel.querySelector('.fullscreen-btn');
+  fullscreenBtn.addEventListener('click', () => {
+    extractPanel.classList.toggle('fullscreen');
+    
+    // 更新全屏按钮图标
+    const isFullscreen = extractPanel.classList.contains('fullscreen');
+    fullscreenBtn.textContent = isFullscreen ? '⛶ 退出全屏' : '⛶ 全屏';
+    fullscreenBtn.title = isFullscreen ? '退出全屏' : '全屏';
+    
+    // 调整内容区域高度
+    const panelContent = extractPanel.querySelector('.panel-content');
+    if (panelContent) {
+      panelContent.style.maxHeight = isFullscreen 
+        ? 'calc(100vh - 120px)' 
+        : '65vh';
+    }
+    
+    // 如果是预览模式，重新计算表格高度
+    if (extractPanel.querySelector('.tab-btn.active')?.dataset.format === 'preview') {
+      setTimeout(renderPreviewTable, 100);
+    }
+
+    adjustSqlOutputAreaHeight();
+  });
+  
+  // 按ESC键退出全屏
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && extractPanel.classList.contains('fullscreen')) {
+      extractPanel.classList.remove('fullscreen');
+      fullscreenBtn.textContent = '⛶ 全屏';
+      fullscreenBtn.title = '全屏';
+      
+      const panelContent = extractPanel.querySelector('.panel-content');
+      if (panelContent) {
+        panelContent.style.maxHeight = '65vh';
+      }
+      
+      if (extractPanel.querySelector('.tab-btn.active')?.dataset.format === 'preview') {
+        setTimeout(renderPreviewTable, 100);
+      }
+
+      adjustSqlOutputAreaHeight();
+    }
+  });
+  
   // 标签切换
   const tabBtns = extractPanel.querySelectorAll('.tab-btn');
   const sqlConfig = extractPanel.querySelector('#sqlConfig');
@@ -508,6 +587,12 @@ function bindPanelEvents() {
       tabBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const format = btn.getAttribute('data-format');
+
+      if (format === 'sql') {
+        extractPanel.classList.add('sql-active');
+      } else {
+        extractPanel.classList.remove('sql-active');
+      }
       
       // 显示或隐藏 SQL 配置区
       sqlConfig.style.display = format === 'sql' ? 'block' : 'none';
@@ -516,12 +601,25 @@ function bindPanelEvents() {
       if (format === 'preview') {
         outputArea.style.display = 'none';
         previewArea.style.display = 'flex';
-        panelActions.style.display = 'none';
+        panelActions.style.display = 'flex';
+        const copyBtn = extractPanel.querySelector('.copy-btn');
+        const downloadBtn = extractPanel.querySelector('.download-btn');
+        if (copyBtn) copyBtn.textContent = '📋 复制整表';
+        if (downloadBtn) downloadBtn.textContent = '💾 导出 Excel';
         renderPreviewTable();
       } else {
         outputArea.style.display = 'block';
         previewArea.style.display = 'none';
         panelActions.style.display = 'flex';
+        const copyBtn = extractPanel.querySelector('.copy-btn');
+        const downloadBtn = extractPanel.querySelector('.download-btn');
+        if (copyBtn) copyBtn.textContent = '📋 复制结果';
+        if (downloadBtn) downloadBtn.textContent = '💾 下载文件';
+        if (format === 'sql') {
+          renderSqlColumnOptions();
+          updateSqlModeUI();
+          adjustSqlOutputAreaHeight();
+        }
         extractData(format);
       }
     });
@@ -543,27 +641,61 @@ function bindPanelEvents() {
       regenerateSQL();
     }
   });
+
+  tableNameInput.addEventListener('change', regenerateSQL);
   
   refreshBtn.addEventListener('click', regenerateSQL);
+
+  // SQL 模式（INSERT / UPDATE）切换：radio 变更时更新 UI 并在 SQL 标签页内重新生成
+  const sqlModeRadios = extractPanel.querySelectorAll('input[name="sqlMode"]');
+  if (sqlModeRadios && sqlModeRadios.length) {
+    sqlModeRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        updateSqlModeUI();
+
+        const activeTab = extractPanel.querySelector('.tab-btn.active');
+        if (activeTab && activeTab.getAttribute('data-format') === 'sql') {
+          regenerateSQL();
+        }
+      });
+    });
+  }
+
+  const onSqlColumnsChange = () => regenerateSQL();
+  const sqlInsertColumns = extractPanel.querySelector('#sqlInsertColumns');
+  const sqlUpdateSetColumns = extractPanel.querySelector('#sqlUpdateSetColumns');
+  const sqlUpdateWhereColumns = extractPanel.querySelector('#sqlUpdateWhereColumns');
+  if (sqlInsertColumns) sqlInsertColumns.addEventListener('change', onSqlColumnsChange);
+  if (sqlUpdateSetColumns) sqlUpdateSetColumns.addEventListener('change', onSqlColumnsChange);
+  if (sqlUpdateWhereColumns) sqlUpdateWhereColumns.addEventListener('change', onSqlColumnsChange);
   
   // 复制按钮
   extractPanel.querySelector('.copy-btn').addEventListener('click', () => {
+    const activeTab = extractPanel.querySelector('.tab-btn.active');
+    const format = activeTab ? activeTab.getAttribute('data-format') : '';
+    if (format === 'preview') {
+      copyFullTable();
+      return;
+    }
+
     const content = extractPanel.querySelector('#outputContent').textContent;
     copyToClipboard(content);
   });
   
   // 下载按钮
   extractPanel.querySelector('.download-btn').addEventListener('click', () => {
-    const format = extractPanel.querySelector('.tab-btn.active').getAttribute('data-format');
+    const activeTab = extractPanel.querySelector('.tab-btn.active');
+    const format = activeTab ? activeTab.getAttribute('data-format') : '';
+    if (format === 'preview') {
+      generateExcelFile();
+      return;
+    }
+
     const content = extractPanel.querySelector('#outputContent').textContent;
     downloadFile(content, format);
   });
   
-  // 全屏按钮
-  const fullscreenBtn = extractPanel.querySelector('.preview-fullscreen-btn');
-  if (fullscreenBtn) {
-    fullscreenBtn.addEventListener('click', toggleFullscreen);
-  }
+  // 全屏按钮功能已移至面板头部
   
   // 预览区复制选中按钮
   const previewCopyBtn = extractPanel.querySelector('.preview-copy-btn');
@@ -584,13 +716,49 @@ function handleCopyShortcut(e) {
   
   // 检查是否是预览模式且有选中
   const previewArea = extractPanel.querySelector('#previewArea');
-  if (previewArea && previewArea.style.display !== 'none') {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
-      const hasSelection = previewSelection.startRow !== -1 || previewSelection.startCol !== -1;
-      if (hasSelection) {
-        e.preventDefault();
-        copySelectedCells();
-      }
+  if (!previewArea || previewArea.style.display === 'none') return;
+
+  const activeEl = document.activeElement;
+  const isEditable = activeEl && (
+    activeEl.tagName === 'INPUT' ||
+    activeEl.tagName === 'TEXTAREA' ||
+    activeEl.isContentEditable
+  );
+  if (isEditable) return;
+
+  const container = extractPanel.querySelector('.preview-table-container');
+  const isPanelActive =
+    extractPanel.contains(activeEl) ||
+    (container && container.matches(':hover')) ||
+    previewArea.matches(':hover');
+  if (!isPanelActive) return;
+
+  if (!(e.metaKey || e.ctrlKey)) return;
+  const key = (e.key || '').toLowerCase();
+
+  if (key === 'a') {
+    const previewTable = extractPanel.querySelector('#previewTable');
+    if (!previewTable) return;
+
+    const allRows = previewTable.querySelectorAll('tr');
+    const maxRow = allRows.length - 2;
+    const maxCol = allRows[0] ? allRows[0].querySelectorAll('th, td').length - 1 : 0;
+
+    e.preventDefault();
+
+    previewSelection.startRow = -1;
+    previewSelection.startCol = 0;
+    previewSelection.endRow = Math.max(-1, maxRow);
+    previewSelection.endCol = Math.max(0, maxCol);
+    updatePreviewSelection(previewTable);
+    return;
+  }
+
+  if (key === 'c') {
+    const hasSelection = previewSelection.startRow !== null;
+    if (hasSelection) {
+      e.preventDefault();
+      copySelectedCells();
     }
   }
 }
@@ -631,6 +799,10 @@ function extractData(format) {
       break;
     case 'sql':
       output = convertToSQL(data);
+      output = String(output).trimStart();
+      break;
+    case 'excel':
+      output = 'excel_placeholder'; // Will be handled in downloadFile
       break;
   }
   
@@ -675,7 +847,7 @@ function parseStandardTable(table) {
     data.headers = [];
     const cells = rows[0].querySelectorAll('td');
     cells.forEach((cell, index) => {
-      data.headers.push(`列${index + 1}`);
+      data.headers.push(cell.textContent.trim() || `列${index + 1}`);
     });
   }
   
@@ -876,29 +1048,359 @@ function convertToSQL(data, tableName = 'table_data') {
   
   // 清理表名，只保留字母、数字、下划线和中文
   tableName = tableName.replace(/[^a-zA-Z0-9_\u4e00-\u9fa5]/g, '_');
-  
-  const columns = data.headers.map(h => h.replace(/[^a-zA-Z0-9_\u4e00-\u9fa5]/g, '_')).join(', ');
-  
-  const lines = [`-- INSERT 语句\n`];
-  
-  data.rows.forEach((row, index) => {
-    const values = row.map(cell => {
-      // 处理 NULL 值
-      if (cell === '' || cell === null || cell === undefined) {
-        return 'NULL';
-      }
-      // 处理数字
-      if (!isNaN(cell) && cell.trim() !== '') {
-        return cell;
-      }
-      // 处理字符串
-      return `'${String(cell).replace(/'/g, "''")}'`;
-    }).join(', ');
+
+  const sanitizeColumn = (index, defaultName) => {
+    // 使用自定义列名（如果存在）
+    const customName = columnNames.get(index);
+    if (customName && customName.trim() !== '') {
+      return customName.trim();
+    }
+    // 否则使用表头或默认列名
+    const name = defaultName || `col_${index + 1}`;
+    // 清理列名，只保留字母、数字、下划线和中文
+    return name.replace(/[^\w\u4e00-\u9fa5]/g, '_');
+  };
+
+  const formatValue = (cell) => {
+    // 处理 NULL 值
+    if (cell === '' || cell === null || cell === undefined) {
+      return 'NULL';
+    }
+    // 处理数字
+    const strVal = String(cell).trim();
+    if (strVal === '') return 'NULL';
+    if (!isNaN(cell) && strVal === String(Number(cell))) {
+      return strVal;
+    }
+    // 处理字符串
+    return `'${strVal.replace(/'/g, "''")}'`;
+  };
+
+  const getSelectedIndices = (selector, fallback) => {
+    if (!extractPanel) return fallback;
+    const container = extractPanel.querySelector(selector);
+    if (!container) return fallback;
+    const options = Array.from(container.querySelectorAll('.sql-col-option'));
+    if (options.length === 0) return fallback;
     
-    lines.push(`INSERT INTO ${tableName} (${columns}) VALUES (${values});`);
+    return options
+      .map(option => {
+        const index = parseInt(option.getAttribute('data-col-index'), 10);
+        const checkbox = option.querySelector('input[type="checkbox"]');
+        return { index, checked: checkbox?.checked };
+      })
+      .filter(item => !isNaN(item.index) && item.checked)
+      .map(item => item.index);
+  };
+
+  // 获取当前模式（INSERT 或 UPDATE）
+  const mode = extractPanel?.querySelector('input[name="sqlMode"]:checked')?.value || 'insert';
+  const allIndices = data.headers.map((_, i) => i);
+
+  if (mode === 'update') {
+    const defaultWhere = data.headers.length > 0 ? [0] : [];
+    const defaultSet = data.headers.length > 1 ? [1] : [];
+
+    const setIndices = getSelectedIndices('#sqlUpdateSetColumns', defaultSet);
+    const whereIndices = getSelectedIndices('#sqlUpdateWhereColumns', defaultWhere);
+
+    if (setIndices.length === 0) {
+      return '-- 请至少选择 SET 列';
+    }
+    if (whereIndices.length === 0) {
+      return '-- 请至少选择 WHERE 列';
+    }
+
+    const lines = [];
+    const headers = data.headers || [];
+
+    data.rows.forEach((row) => {
+      const setClause = setIndices.map(i => {
+        const colName = sanitizeColumn(i, headers[i]);
+        const val = formatValue(row[i]);
+        return `\`${colName}\` = ${val}`;
+      }).join(', ');
+
+      const whereClause = whereIndices.map(i => {
+        const colName = sanitizeColumn(i, headers[i]);
+        const val = formatValue(row[i]);
+        return val === 'NULL' ? `\`${colName}\` IS NULL` : `\`${colName}\` = ${val}`;
+      }).join(' AND ');
+
+      lines.push(`UPDATE \`${tableName}\` SET ${setClause} WHERE ${whereClause};`);
+    });
+
+    return lines.join('\n');
+  }
+
+  // INSERT 模式
+  const insertIndices = getSelectedIndices('#sqlInsertColumns', allIndices);
+
+  if (insertIndices.length === 0) {
+    return '-- 请至少选择插入列';
+  }
+
+  const headers = data.headers || [];
+  const columns = insertIndices.map(i => {
+    const colName = sanitizeColumn(i, headers[i]);
+    return `\`${colName}\``;
+  }).join(', ');
+  
+  const lines = [];
+
+  data.rows.forEach((row) => {
+    const values = insertIndices.map(i => formatValue(row[i])).join(', ');
+    lines.push(`INSERT INTO \`${tableName}\` (${columns}) VALUES (${values});`);
+  });
+
+  return lines.join('\n');
+}
+
+function updateSqlModeUI() {
+  if (!extractPanel) return;
+
+  const mode = extractPanel.querySelector('input[name="sqlMode"]:checked')?.value || 'insert';
+  const insertBlock = extractPanel.querySelector('#sqlInsertBlock');
+  const setBlock = extractPanel.querySelector('#sqlUpdateSetBlock');
+  const whereBlock = extractPanel.querySelector('#sqlUpdateWhereBlock');
+
+  if (insertBlock) insertBlock.style.display = mode === 'insert' ? 'block' : 'none';
+  if (setBlock) setBlock.style.display = mode === 'update' ? 'block' : 'none';
+  if (whereBlock) whereBlock.style.display = mode === 'update' ? 'block' : 'none';
+  
+  // Trigger SQL regeneration when mode changes
+  const activeTab = extractPanel.querySelector('.tab-btn.active');
+  if (currentTable && activeTab && activeTab.getAttribute('data-format') === 'sql') {
+    const data = parseTable(currentTable);
+    const outputContent = extractPanel.querySelector('#outputContent');
+    if (outputContent) {
+      outputContent.textContent = String(convertToSQL(data)).trimStart();
+    }
+  }
+}
+
+function adjustSqlOutputAreaHeight() {
+  if (!extractPanel) return;
+  const activeTab = extractPanel.querySelector('.tab-btn.active');
+  const isSql = activeTab && activeTab.getAttribute('data-format') === 'sql';
+  const outputArea = extractPanel.querySelector('#outputArea');
+  if (!outputArea) return;
+
+  if (!isSql) {
+    outputArea.style.maxHeight = '';
+    outputArea.style.overflow = '';
+    return;
+  }
+
+  const isFullscreen = extractPanel.classList.contains('fullscreen');
+  outputArea.style.maxHeight = isFullscreen ? '18vh' : '35vh';
+  outputArea.style.overflow = 'auto';
+}
+
+// 存储自定义列名
+const columnNames = new Map();
+
+function truncateSqlLabel(text, maxLen = 20) {
+  const s = String(text ?? '');
+  if (s.length <= maxLen) return s;
+  return `${s.slice(0, maxLen)}...`;
+}
+
+function updateSqlSelectionLabel(index) {
+  if (!extractPanel) return;
+  const fullName = columnNames.get(index) || `col_${index + 1}`;
+  const label = truncateSqlLabel(fullName, 20);
+
+  ['#sqlInsertColumns', '#sqlUpdateSetColumns', '#sqlUpdateWhereColumns'].forEach((selector) => {
+    const container = extractPanel.querySelector(selector);
+    if (!container) return;
+    const option = container.querySelector(`.sql-col-option[data-col-index="${index}"]`);
+    if (!option) return;
+    const nameSpan = option.querySelector('.sql-col-label');
+    if (nameSpan) {
+      nameSpan.textContent = label;
+      nameSpan.title = String(fullName);
+    }
+  });
+}
+
+function renderSqlColumnOptions() {
+  if (!extractPanel || !currentTable) return;
+
+  const data = parseTable(currentTable);
+  const namesContainer = extractPanel.querySelector('#sqlColumnNames');
+  const insertContainer = extractPanel.querySelector('#sqlInsertColumns');
+  const setContainer = extractPanel.querySelector('#sqlUpdateSetColumns');
+  const whereContainer = extractPanel.querySelector('#sqlUpdateWhereColumns');
+
+  if (!namesContainer || !insertContainer || !setContainer || !whereContainer) return;
+
+  // 保存当前选中状态和自定义列名
+  const getColumnStates = (container) => {
+    const states = new Map();
+    container.querySelectorAll('.sql-col-option').forEach(option => {
+      const idx = parseInt(option.getAttribute('data-col-index'), 10);
+      if (!isNaN(idx)) {
+        const checkbox = option.querySelector('input[type="checkbox"]');
+        states.set(idx, {
+          checked: checkbox?.checked ?? true,
+          name: ''
+        });
+      }
+    });
+    return states;
+  };
+
+  const getNameStates = (container) => {
+    const states = new Map();
+    container.querySelectorAll('.sql-col-name-option').forEach(option => {
+      const idx = parseInt(option.getAttribute('data-col-index'), 10);
+      if (!isNaN(idx)) {
+        const nameInput = option.querySelector('.column-name-input');
+        states.set(idx, {
+          name: nameInput?.value || ''
+        });
+      }
+    });
+    return states;
+  };
+
+  const prevNames = getNameStates(namesContainer);
+  const prevInsert = getColumnStates(insertContainer);
+  const prevSet = getColumnStates(setContainer);
+  const prevWhere = getColumnStates(whereContainer);
+
+  // 列选择区域更紧凑，支持自动换行显示更多列
+  [insertContainer, setContainer, whereContainer].forEach((c) => {
+    c.style.display = 'flex';
+    c.style.flexWrap = 'wrap';
+    c.style.alignItems = 'center';
+    c.style.gap = '2px 6px';
+  });
+
+  // 清空容器
+  namesContainer.textContent = '';
+  insertContainer.textContent = '';
+  setContainer.textContent = '';
+  whereContainer.textContent = '';
+
+  const createNameOption = (index, header, state) => {
+    const container = document.createElement('div');
+    container.className = 'sql-col-name-option';
+    container.setAttribute('data-col-index', String(index));
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'column-name-input';
+    nameInput.value = state?.name || header || `col_${index + 1}`;
+    nameInput.placeholder = '列名';
+    nameInput.style.width = '120px';
+    nameInput.style.margin = '0 6px 0 0';
+    nameInput.style.padding = '2px 4px';
+    nameInput.style.border = '1px solid #ccc';
+    nameInput.style.borderRadius = '3px';
+
+    const colIndex = document.createElement('span');
+    colIndex.textContent = `(列${index + 1})`;
+    colIndex.style.fontSize = '0.8em';
+    colIndex.style.color = '#666';
+
+    nameInput.addEventListener('change', () => {
+      columnNames.set(index, nameInput.value);
+      updateSqlSelectionLabel(index);
+      if (currentTable) {
+        const data = parseTable(currentTable);
+        const outputContent = extractPanel.querySelector('#outputContent');
+        if (outputContent) {
+          outputContent.textContent = String(convertToSQL(data)).trimStart();
+        }
+      }
+    });
+
+    container.appendChild(nameInput);
+    container.appendChild(colIndex);
+    return container;
+  };
+
+  const createSelectOption = (index, header, state) => {
+    const container = document.createElement('div');
+    container.className = 'sql-col-option';
+    container.setAttribute('data-col-index', String(index));
+    container.style.display = 'inline-flex';
+    container.style.alignItems = 'center';
+    container.style.gap = '4px';
+    container.style.margin = '2px 8px 2px 0';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = state?.checked ?? true;
+
+    const fullName = columnNames.get(index) || header || `col_${index + 1}`;
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'sql-col-label';
+    nameSpan.textContent = truncateSqlLabel(fullName, 20);
+    nameSpan.title = String(fullName);
+    nameSpan.style.whiteSpace = 'nowrap';
+    nameSpan.style.fontSize = '12px';
+
+    const colIndex = document.createElement('span');
+    colIndex.textContent = `(列${index + 1})`;
+    colIndex.style.fontSize = '11px';
+    colIndex.style.color = '#666';
+    colIndex.style.whiteSpace = 'nowrap';
+
+    container.appendChild(checkbox);
+    container.appendChild(nameSpan);
+    container.appendChild(colIndex);
+    return container;
+  };
+
+  // 渲染每列选项
+  data.headers.forEach((header, index) => {
+    const nameState = prevNames.get(index) || {};
+    const insertState = prevInsert.get(index) || {};
+    const setState = prevSet.get(index) || {};
+    const whereState = prevWhere.get(index) || {};
+    
+    // 如果之前没有自定义列名，使用表头或默认值
+    if (!columnNames.has(index)) {
+      columnNames.set(index, header || `col_${index + 1}`);
+    }
+
+    if (!nameState.name || nameState.name.trim() === '') {
+      nameState.name = columnNames.get(index) || header || `col_${index + 1}`;
+    }
+    
+    // 设置默认选中状态
+    insertState.checked = prevInsert.has(index) ? insertState.checked : true;
+    setState.checked = prevSet.has(index) ? setState.checked : index !== 0;
+    whereState.checked = prevWhere.has(index) ? whereState.checked : index === 0;
+    
+    // 列名设置（只渲染一次）
+    namesContainer.appendChild(createNameOption(index, header, nameState));
+
+    // 列选择（只渲染 checkbox + 列序号）
+    insertContainer.appendChild(createSelectOption(index, header, insertState));
+    setContainer.appendChild(createSelectOption(index, header, setState));
+    whereContainer.appendChild(createSelectOption(index, header, whereState));
   });
   
-  return lines.join('\n');
+  // 添加列选择变化事件
+  const addChangeHandlers = (container) => {
+    container.addEventListener('change', () => {
+      if (currentTable) {
+        const data = parseTable(currentTable);
+        const outputContent = extractPanel.querySelector('#outputContent');
+        if (outputContent) {
+          outputContent.textContent = String(convertToSQL(data)).trimStart();
+        }
+      }
+    });
+  };
+  
+  addChangeHandlers(insertContainer);
+  addChangeHandlers(setContainer);
+  addChangeHandlers(whereContainer);
 }
 
 // ============ 预览功能 ============
@@ -953,6 +1455,16 @@ function renderPreviewTable() {
   
   // 绑定选择事件
   bindPreviewSelectionEvents(previewTable);
+
+  const container = extractPanel.querySelector('.preview-table-container');
+  if (container) {
+    if (container.tabIndex < 0) container.tabIndex = 0;
+    try {
+      container.focus({ preventScroll: true });
+    } catch (err) {
+      container.focus();
+    }
+  }
 }
 
 // 绑定预览表格选择事件
@@ -961,6 +1473,10 @@ function bindPreviewSelectionEvents(table) {
   const container = extractPanel.querySelector('.preview-table-container');
   let scrollInterval = null;
   let scrollDirection = { top: false, bottom: false, left: false, right: false };
+
+  if (container && container.tabIndex < 0) {
+    container.tabIndex = 0;
+  }
   
   // 获取表格行列数
   const allRows = table.querySelectorAll('tr');
@@ -971,6 +1487,14 @@ function bindPreviewSelectionEvents(table) {
     // 普通点击开始选择
     cell.addEventListener('mousedown', (e) => {
       e.preventDefault();
+
+      if (container) {
+        try {
+          container.focus({ preventScroll: true });
+        } catch (err) {
+          container.focus();
+        }
+      }
       
       const row = parseInt(cell.dataset.row);
       const col = parseInt(cell.dataset.col);
@@ -1008,11 +1532,22 @@ function bindPreviewSelectionEvents(table) {
         !container.matches(':hover')) return;
     
     const isArrowKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
-    if (!isArrowKey) return;
+    const isSelectAll = e.key === 'a';
+    if (!isArrowKey && !isSelectAll) return;
     
     e.preventDefault();
     
     const hasSelection = previewSelection.startRow !== null;
+    
+    if (isSelectAll) {
+      // 全选
+      previewSelection.startRow = -1;
+      previewSelection.startCol = 0;
+      previewSelection.endRow = maxRow;
+      previewSelection.endCol = maxCol;
+      updatePreviewSelection(table);
+      return;
+    }
     
     switch (e.key) {
       case 'ArrowUp':
@@ -1193,6 +1728,21 @@ function copySelectedCells() {
   copyToClipboard(lines.join('\n'));
 }
 
+function copyFullTable() {
+  if (!currentTable) return;
+  const data = parseTable(currentTable);
+
+  const lines = [];
+  if (data.headers && data.headers.length > 0) {
+    lines.push(data.headers.join('\t'));
+  }
+  data.rows.forEach(row => {
+    lines.push(row.join('\t'));
+  });
+
+  copyToClipboard(lines.join('\n'));
+}
+
 // 切换全屏
 function toggleFullscreen() {
   if (!extractPanel) return;
@@ -1212,20 +1762,45 @@ function toggleFullscreen() {
 
 // 复制到剪贴板
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => {
+  const execCommandCopy = () => {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return ok;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  const ok = execCommandCopy();
+  if (ok) {
     showToast('✅ 已复制到剪贴板');
-  }).catch(err => {
-    // 降级方案
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-    showToast('✅ 已复制到剪贴板');
-  });
+    return;
+  }
+
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('✅ 已复制到剪贴板');
+      }).catch(() => {
+        showToast('❌ 复制失败');
+      });
+      return;
+    }
+  } catch (err) {}
+
+  showToast('❌ 复制失败');
 }
 
 // 下载文件
@@ -1234,8 +1809,15 @@ function downloadFile(content, format) {
     markdown: 'md',
     json: 'json',
     csv: 'csv',
-    sql: 'sql'
+    sql: 'sql',
+    excel: 'xls'
   };
+  
+  if (format === 'excel') {
+    // Generate Excel file
+    generateExcelFile();
+    return;
+  }
   
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -1248,6 +1830,72 @@ function downloadFile(content, format) {
   URL.revokeObjectURL(url);
   
   showToast('✅ 文件下载成功');
+}
+
+// 生成并下载 Excel 文件
+function generateExcelFile() {
+  if (!currentTable) return;
+  
+  const data = parseTable(currentTable);
+
+  createAndDownloadExcel(data);
+}
+
+// 创建并下载 Excel 文件
+function createAndDownloadExcel(data) {
+  try {
+    const escapeXml = (val) => {
+      return String(val ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    };
+
+    const rows = [];
+    if (data.headers && data.headers.length > 0) {
+      rows.push(data.headers);
+    }
+    data.rows.forEach(row => rows.push(row));
+
+    const xmlRows = rows.map(row => {
+      const xmlCells = row.map(cell => {
+        return `<Cell><Data ss:Type="String">${escapeXml(cell)}</Data></Cell>`;
+      }).join('');
+      return `<Row>${xmlCells}</Row>`;
+    }).join('');
+
+    const xml =
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<?mso-application progid="Excel.Sheet"?>\n' +
+      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" ' +
+      'xmlns:o="urn:schemas-microsoft-com:office:office" ' +
+      'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
+      'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" ' +
+      'xmlns:html="http://www.w3.org/TR/REC-html40">\n' +
+      '<Worksheet ss:Name="Sheet1">\n' +
+      '<Table>\n' +
+      xmlRows +
+      '\n</Table>\n' +
+      '</Worksheet>\n' +
+      '</Workbook>';
+
+    const blob = new Blob(['\ufeff', xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `table_export_${Date.now()}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('✅ Excel 文件下载成功');
+  } catch (error) {
+    showToast('❌ 生成 Excel 文件失败');
+    console.error('Excel generation error:', error);
+  }
 }
 
 // 显示提示消息

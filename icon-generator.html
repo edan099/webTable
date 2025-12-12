@@ -7,7 +7,7 @@
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      max-width: 800px;
+      max-width: 1400px;
       margin: 50px auto;
       padding: 20px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -97,6 +97,20 @@
         <h3>128 × 128</h3>
         <canvas id="icon128" width="128" height="128"></canvas>
         <button onclick="downloadIcon('icon128', 128)">下载 icon128.png</button>
+      </div>
+    </div>
+
+    <h2 style="text-align: center; margin-top: 40px; color: #333;">🖼️ 商店截图</h2>
+    <div class="icon-preview">
+      <div class="icon-item">
+        <h3>1280 × 800</h3>
+        <canvas id="screenshot1280" width="1280" height="800" style="max-width: 100%; height: auto;"></canvas>
+        <button onclick="downloadScreenshot('screenshot1280', 1280, 800)">下载 screenshot-1280x800.png</button>
+      </div>
+      <div class="icon-item">
+        <h3>640 × 400</h3>
+        <canvas id="screenshot640" width="640" height="400" style="max-width: 100%; height: auto;"></canvas>
+        <button onclick="downloadScreenshot('screenshot640', 640, 400)">下载 screenshot-640x400.png</button>
       </div>
     </div>
 
@@ -191,12 +205,198 @@
       link.href = canvas.toDataURL('image/png');
       link.click();
     }
+
+    // 绘制截图
+    function drawScreenshot(canvasId, width, height) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const scale = width / 1280;
+
+      // 背景渐变
+      const bgGradient = ctx.createLinearGradient(0, 0, width, height);
+      bgGradient.addColorStop(0, '#667eea');
+      bgGradient.addColorStop(1, '#764ba2');
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // 模拟浏览器窗口
+      const windowX = 80 * scale;
+      const windowY = 60 * scale;
+      const windowW = width - 160 * scale;
+      const windowH = height - 120 * scale;
+
+      // 浏览器窗口阴影
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 40 * scale;
+      ctx.shadowOffsetY = 20 * scale;
+
+      // 浏览器窗口背景
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, windowX, windowY, windowW, windowH, 12 * scale);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      // 浏览器标题栏
+      ctx.fillStyle = '#f3f4f6';
+      roundRectTop(ctx, windowX, windowY, windowW, 40 * scale, 12 * scale);
+      ctx.fill();
+
+      // 窗口控制按钮
+      const btnY = windowY + 16 * scale;
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(windowX + 20 * scale, btnY, 6 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(windowX + 44 * scale, btnY, 6 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath();
+      ctx.arc(windowX + 68 * scale, btnY, 6 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 网页内容区域
+      const contentY = windowY + 40 * scale;
+      const contentH = windowH - 40 * scale;
+
+      // 模拟表格
+      const tableX = windowX + 40 * scale;
+      const tableY = contentY + 40 * scale;
+      const tableW = windowW - 80 * scale;
+      const tableH = contentH - 80 * scale;
+      const rows = 6;
+      const cols = 5;
+      const cellW = tableW / cols;
+      const cellH = tableH / rows;
+
+      // 表头背景
+      ctx.fillStyle = '#667eea';
+      ctx.fillRect(tableX, tableY, tableW, cellH);
+
+      // 表头文字
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${16 * scale}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const headers = ['ID', '名称', '类型', '状态', '操作'];
+      headers.forEach((h, i) => {
+        ctx.fillText(h, tableX + cellW * i + cellW / 2, tableY + cellH / 2);
+      });
+
+      // 表格内容
+      ctx.font = `${14 * scale}px sans-serif`;
+      ctx.fillStyle = '#374151';
+      for (let r = 1; r < rows; r++) {
+        // 斑马纹
+        if (r % 2 === 0) {
+          ctx.fillStyle = '#f9fafb';
+          ctx.fillRect(tableX, tableY + cellH * r, tableW, cellH);
+        }
+        ctx.fillStyle = '#374151';
+        ctx.fillText(r.toString(), tableX + cellW * 0 + cellW / 2, tableY + cellH * r + cellH / 2);
+        ctx.fillText('数据项 ' + r, tableX + cellW * 1 + cellW / 2, tableY + cellH * r + cellH / 2);
+        ctx.fillText('类型 ' + String.fromCharCode(64 + r), tableX + cellW * 2 + cellW / 2, tableY + cellH * r + cellH / 2);
+        ctx.fillStyle = r % 2 === 0 ? '#22c55e' : '#3b82f6';
+        ctx.fillText(r % 2 === 0 ? '已完成' : '进行中', tableX + cellW * 3 + cellW / 2, tableY + cellH * r + cellH / 2);
+        ctx.fillStyle = '#667eea';
+        ctx.fillText('导出', tableX + cellW * 4 + cellW / 2, tableY + cellH * r + cellH / 2);
+        ctx.fillStyle = '#374151';
+      }
+
+      // 表格边框
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1 * scale;
+      ctx.strokeRect(tableX, tableY, tableW, tableH);
+      for (let i = 1; i < cols; i++) {
+        ctx.beginPath();
+        ctx.moveTo(tableX + cellW * i, tableY);
+        ctx.lineTo(tableX + cellW * i, tableY + tableH);
+        ctx.stroke();
+      }
+      for (let i = 1; i < rows; i++) {
+        ctx.beginPath();
+        ctx.moveTo(tableX, tableY + cellH * i);
+        ctx.lineTo(tableX + tableW, tableY + cellH * i);
+        ctx.stroke();
+      }
+
+      // 插件弹窗
+      const popupW = 200 * scale;
+      const popupH = 160 * scale;
+      const popupX = windowX + windowW - popupW - 20 * scale;
+      const popupY = contentY + 20 * scale;
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+      ctx.shadowBlur = 20 * scale;
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, popupX, popupY, popupW, popupH, 8 * scale);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      // 弹窗标题
+      ctx.fillStyle = '#667eea';
+      ctx.font = `bold ${14 * scale}px sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillText('📊 表格导出', popupX + 15 * scale, popupY + 25 * scale);
+
+      // 弹窗按钮
+      const btnNames = ['Markdown', 'JSON', 'CSV', 'SQL'];
+      btnNames.forEach((name, i) => {
+        const btnX = popupX + 15 * scale;
+        const btnY = popupY + 45 * scale + i * 28 * scale;
+        const btnW = popupW - 30 * scale;
+        const btnH = 24 * scale;
+
+        const btnGradient = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
+        btnGradient.addColorStop(0, '#667eea');
+        btnGradient.addColorStop(1, '#764ba2');
+        ctx.fillStyle = btnGradient;
+        roundRect(ctx, btnX, btnY, btnW, btnH, 4 * scale);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${12 * scale}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(name, btnX + btnW / 2, btnY + btnH / 2 + 4 * scale);
+      });
+
+      // 标题文字
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${28 * scale}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('网页表格识别与导出器', width / 2, height - 30 * scale);
+    }
+
+    // 绘制只有顶部圆角的矩形
+    function roundRectTop(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height);
+      ctx.lineTo(x, y + height);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    // 下载截图
+    function downloadScreenshot(canvasId, width, height) {
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = `screenshot-${width}x${height}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
     
     // 初始化绘制所有图标
     window.onload = function() {
       drawIcon('icon16', 16);
       drawIcon('icon48', 48);
       drawIcon('icon128', 128);
+      drawScreenshot('screenshot1280', 1280, 800);
+      drawScreenshot('screenshot640', 640, 400);
     };
   </script>
 </body>
